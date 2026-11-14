@@ -68,6 +68,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.6.9**: test release for updating over Wi-Fi and the update dot (no other changes).
 - **0.6.8**: a red dot on the Settings button when a newer version is available.
 - **0.6.7**: a new version now confirms itself after 20 seconds (was 60), and if one ever fails to start and the screen goes back to the previous version, the screen and phone page say so.
 - **0.6.6**: **Restart** button on the Settings & info page (tap twice) and **Restart screen** on the phone page, for wall-mounted screens. Reset all settings is now a separate, smaller hold-5-seconds button.
