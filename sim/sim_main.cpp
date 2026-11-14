@@ -76,6 +76,7 @@ bool connected() { return !apMode(); }
 std::string address() { return apMode() ? std::string("Join Wi-Fi \"GridCheck-Setup\"") : std::string("http://192.168.1.77/"); }
 std::string ssidInUse() { return "HomeWiFi"; }
 void factoryReset() {}
+void restart() {}
 void setPalette(uint8_t p) { S.palette = p; }
 void setDimAfter(uint8_t m) { S.dimAfterMin = m; }
 void setTheme(uint8_t t) { S.theme = t; }

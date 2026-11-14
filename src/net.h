@@ -84,6 +84,8 @@ std::string address();     // what to type on a phone
 std::string ssidInUse();
 /** Wipe every saved setting (Wi-Fi, inverter, PIN) and restart. */
 void factoryReset();
+/** Restart the screen (settings and history are kept). */
+void restart();
 /** Change and save one screen setting from the on-screen buttons. */
 void setPalette(uint8_t palette);
 void setTheme(uint8_t theme);

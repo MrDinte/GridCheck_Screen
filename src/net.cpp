@@ -253,6 +253,11 @@ static const char* TZS[][2] = {
 };
 
 static const char* OTA_JS = R"JS(
+(()=>{const b=document.getElementById('restart'),m=document.getElementById('rmsg');if(!b)return;
+b.onclick=async()=>{if(!confirm('Restart the screen? It takes about 20 seconds.'))return;const p=(document.getElementById('pin')||{}).value||'';
+try{const r=await fetch('/restart',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'pin='+encodeURIComponent(p)});
+const j=await r.json();if(!r.ok){m.textContent=j.error||'Something went wrong.';return;}m.textContent='Restarting... this page reloads in 25 seconds.';setTimeout(()=>location.reload(),25000);}
+catch(e){m.textContent='The screen did not answer.';}};})();
 (()=>{const a=document.getElementById('touadd');if(a){const upd=()=>{a.hidden=!document.querySelector('.tou[hidden]');};
 a.onclick=()=>{const r=document.querySelector('.tou[hidden]');if(r){r.hidden=false;r.querySelector('input').focus();}upd();};upd();}})();
 (()=>{const $=i=>document.getElementById(i),pin=()=>($('pin')||{}).value||'';let timer,latest='';
@@ -297,7 +302,10 @@ static std::string page(const std::string& message, bool good) {
     snprintf(b, sizeof b, "<div class=kv><span>Now</span><b>solar %.2f kW, home %.2f kW, battery %.0f%%</b></div>", l.solar, l.house, l.soc);
     h += b;
   }
-  h += "<div class=kv><span>Firmware</span><b>" EH_VERSION "</b></div></div>";
+  h += "<div class=kv><span>Firmware</span><b>" EH_VERSION "</b></div>"
+       "<button type=button class=sec id=restart>Restart screen</button><p class=help id=rmsg>Settings and history are kept.";
+  if (!s.pinHash.empty()) h += " Fill in your current PIN (at the bottom) first.";
+  h += "</p></div>";
 
   h += "<form method=post action=/save>";
   h += "<div class=card><h2>Wi-Fi</h2><label for=ssid>Network</label><input id=ssid name=ssid list=nets autocomplete=off autocapitalize=off value='" +
@@ -455,6 +463,12 @@ static esp_err_t sendPage(httpd_req_t* req, const char* status, const std::strin
 }
 
 static esp_err_t handleRoot(httpd_req_t* req) { return sendPage(req, "200 OK", "", true); }
+
+void restart() {
+  ESP_LOGI(TAG, "restart requested");
+  vTaskDelay(pdMS_TO_TICKS(300));
+  esp_restart();
+}
 
 static void restartTask(void*);
 /** Restart in a couple of seconds (after the reply is sent); right away if there's no memory for that. */
@@ -691,6 +705,15 @@ static std::string readSmallBody(httpd_req_t* req) {
 
 static esp_err_t handleOtaStatus(httpd_req_t* req) { return sendOtaStatus(req); }
 
+static esp_err_t handleRestart(httpd_req_t* req) {
+  const std::string err = otaPin(formField(readSmallBody(req), "pin"));
+  if (!err.empty()) return sendError(req, "403 Forbidden", err);
+  ESP_LOGI(TAG, "restart from the phone page");
+  const esp_err_t r = sendJson(req, "200 OK", "{\"ok\":true}");
+  restartSoon();
+  return r;
+}
+
 static esp_err_t handleOtaCheck(httpd_req_t* req) {
   const std::string err = otaPin(formField(readSmallBody(req), "pin"));
   if (!err.empty()) return sendError(req, "403 Forbidden", err);
@@ -772,6 +795,7 @@ static void startHttp() {
   httpd_uri_t ocheck = {"/ota/check", HTTP_POST, handleOtaCheck, nullptr};
   httpd_uri_t oinstall = {"/ota/install", HTTP_POST, handleOtaInstall, nullptr};
   httpd_uri_t upload = {"/update", HTTP_POST, handleUpload, nullptr};
+  httpd_uri_t rst = {"/restart", HTTP_POST, handleRestart, nullptr};
   httpd_register_uri_handler(server, &root);
   httpd_register_uri_handler(server, &save);
   httpd_register_uri_handler(server, &live);
@@ -779,6 +803,7 @@ static void startHttp() {
   httpd_register_uri_handler(server, &ocheck);
   httpd_register_uri_handler(server, &oinstall);
   httpd_register_uri_handler(server, &upload);
+  httpd_register_uri_handler(server, &rst);
   httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, redirectHome);
 }
 

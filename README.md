@@ -48,7 +48,7 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 5. **Energy flow**: a Sankey diagram of where energy came from and went, for today, 7 or 30 days.
 6. **Battery**: charge ring, time to full or empty, stored kWh, today in/out, reserve, health and temperature.
 7. **History**: the last 24 hours of power, or daily totals for 7 or 30 days.
-8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, firmware updates, and buttons for **Colours**, **screen timeout** and **Reset all** (hold 5 s).
+8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
 
 ![Colour palettes](docs/images/screen-7b-palettes.png)
 
@@ -68,6 +68,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.6.6**: **Restart** button on the Settings & info page (tap twice) and **Restart screen** on the phone page, for wall-mounted screens. Reset all settings is now a separate, smaller hold-5-seconds button.
 - **0.6.5**: light and dark themes: **Theme** button on the Settings & info page and on the phone page (Dark, Light, or Auto: light by day, dark during the night hours).
 - **0.6.4**: fixes online updates sitting at 0% for ever: the download now runs in the update checker (which already has its memory) instead of a new background task that could fail to start for lack of internal RAM.
 - **0.6.3**: updates show progress straight away (the flash is erased while downloading, not all first) and say which step they're on.

@@ -39,7 +39,8 @@ struct Link {
 };
 static Link lSolar, lBatt, lGrid, lHouse;
 
-static lv_obj_t *iWifi, *iAddr, *iInv, *iErr, *iUpd, *iVer, *resetBtn, *resetLbl, *palLbl, *themeLbl, *dimLbl;
+static lv_obj_t *iWifi, *iAddr, *iInv, *iErr, *iUpd, *iVer, *resetBtn, *resetLbl, *restartLbl, *palLbl, *themeLbl, *dimLbl;
+static uint32_t restartAskedAt = 0;
 static bool forceFull = true;
 
 // ---- helpers ---------------------------------------------------------------
@@ -378,7 +379,19 @@ static void resetEvent(lv_event_t* e) {
     }
   } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
     pressedAt = 0;
-    lv_label_set_text(resetLbl, "Reset (hold 5 s)");
+    lv_label_set_text(resetLbl, "Reset all settings (hold 5 s)");
+  }
+}
+
+// Restart: tap, then tap again within 6 s to confirm.
+static void restartTap(lv_event_t*) {
+  if (restartAskedAt && millis() - restartAskedAt < 6000) {
+    lv_label_set_text(restartLbl, "Restarting...");
+    lv_refr_now(nullptr);
+    net::restart();
+  } else {
+    restartAskedAt = millis() | 1;
+    lv_label_set_text(restartLbl, "Tap again to restart");
   }
 }
 
@@ -442,12 +455,22 @@ static void buildInfo(lv_obj_t* page) {
     net::setDimAfter(DIM_CHOICES[(i + 1) % 5]);
   }, C_INK, 210);
 
-  resetBtn = lv_btn_create(row);
-  lv_obj_set_size(resetBtn, 236, 56);
-  lv_obj_set_style_bg_color(resetBtn, C_TILE, 0);
-  lv_obj_set_style_radius(resetBtn, 28, 0);
+  pill(&restartLbl, restartTap, C_INK, 236);
+  lv_label_set_text(restartLbl, LV_SYMBOL_REFRESH "  Restart");
+
+  // Reset all settings: smaller, on its own row, and needs a 5 s hold
+  // (the way back in if the phone page PIN is forgotten).
+  lv_obj_t* row2 = plain(col);
+  lv_obj_set_size(row2, LV_PCT(100), 50);
+  resetBtn = lv_btn_create(row2);
+  lv_obj_set_size(resetBtn, 330, 42);
+  lv_obj_set_style_bg_opa(resetBtn, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_color(resetBtn, C_FAINT, 0);
+  lv_obj_set_style_border_width(resetBtn, 1, 0);
+  lv_obj_set_style_radius(resetBtn, 21, 0);
   lv_obj_set_style_shadow_width(resetBtn, 0, 0);
-  resetLbl = label(resetBtn, &lv_font_montserrat_20, C_WARN, "Reset (hold 5 s)");
+  lv_obj_align(resetBtn, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+  resetLbl = label(resetBtn, &lv_font_montserrat_18, C_WARN, "Reset all settings (hold 5 s)");
   lv_obj_center(resetLbl);
   lv_obj_add_event_cb(resetBtn, resetEvent, LV_EVENT_ALL, nullptr);
 }
@@ -596,6 +619,10 @@ void update() {
   lv_label_set_text(iErr, l.error[0] ? l.error : "none");
   lv_label_set_text_fmt(palLbl, "Colours: %s", PALETTE_NAMES[s.palette % 3]);
   lv_label_set_text_fmt(themeLbl, "Theme: %s", THEME_NAMES[s.theme % 3]);
+  if (restartAskedAt && millis() - restartAskedAt >= 6000) {
+    restartAskedAt = 0;
+    lv_label_set_text(restartLbl, LV_SYMBOL_REFRESH "  Restart");
+  }
   if (s.dimAfterMin) lv_label_set_text_fmt(dimLbl, "Dim after %u min", s.dimAfterMin);
   else lv_label_set_text(dimLbl, "Screen always on");
   if (l.updatedMs) lv_label_set_text_fmt(iUpd, "%lu s ago", (unsigned long)((millis() - l.updatedMs) / 1000));
