@@ -9,21 +9,38 @@
 #include <cstdint>
 #include <string>
 
-// Electricity prices, in cents (as on the bill). Windows give a different
-// import price for part of each day, e.g. a free 11:00-14:00 window (price 0).
-struct TariffWindow {
+// Electricity prices, in cents (as on the bill), with time of use: named
+// periods such as Off-peak, Shoulder, Peak or a free window, each with its own
+// times, days and import price. Any time no period covers uses `buy`.
+enum TouDays : uint8_t { TOU_EVERY_DAY = 0, TOU_WEEKDAYS = 1, TOU_WEEKENDS = 2 };
+static constexpr int TOU_MAX = 6;
+struct TouPeriod {
   bool used = false;
+  char name[16] = "";           // e.g. "Off-peak", "Shoulder", "Peak", "Free"
   uint16_t start = 0, end = 0;  // minutes after midnight; may wrap past midnight
+  uint8_t days = TOU_EVERY_DAY;
   float price = 0;              // c/kWh
 };
 struct Tariff {
   bool set = false;             // false: example prices, never entered by the user
-  float buy = 30, sell = 5;     // c/kWh
+  float buy = 30, sell = 5;     // c/kWh; `buy` applies when no period does
   float supply = 0;             // c/day
-  TariffWindow win[4];
+  char baseName[16] = "";       // name for "all other times", e.g. "Shoulder" ("" = Standard)
+  TouPeriod p[TOU_MAX];
+  bool hasPeriods() const {
+    for (const auto& x : p)
+      if (x.used) return true;
+    return false;
+  }
 };
-/** Import price (c/kWh) at a given minute of the day. */
-float priceAt(const Tariff& t, int minuteOfDay);
+/** Which period applies (index into p[]), or -1 for the normal `buy` price. wday: 0 = Sunday. */
+int periodAt(const Tariff& t, int minuteOfDay, int wday);
+/** Import price (c/kWh) at a given minute of the day and day of the week. */
+float priceAt(const Tariff& t, int minuteOfDay, int wday);
+/** Name of a period index from periodAt ("Standard" for -1). */
+const char* periodName(const Tariff& t, int index);
+/** Minutes from (minuteOfDay, wday) until the price period changes (max 7 days). */
+int minutesUntilChange(const Tariff& t, int minuteOfDay, int wday);
 
 struct Settings {
   std::string ssid, pass;  // home Wi-Fi

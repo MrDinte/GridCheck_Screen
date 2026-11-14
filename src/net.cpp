@@ -87,7 +87,31 @@ static void load() {
   nvs_get_u8(h, "bright", &S.brightness);
   size_t len = sizeof(Tariff);
   Tariff t;
-  if (nvs_get_blob(h, "tariff", &t, &len) == ESP_OK && len == sizeof(Tariff)) S.tariff = t;
+  if (nvs_get_blob(h, "tou", &t, &len) == ESP_OK && len == sizeof(Tariff)) {
+    for (auto& p : t.p) p.name[sizeof p.name - 1] = 0;
+    t.baseName[sizeof t.baseName - 1] = 0;
+    S.tariff = t;
+  } else {
+    // 0.5.0 and earlier: a buy price plus up to 4 unnamed windows
+    struct OldWindow { bool used; uint16_t start, end; float price; };
+    struct OldTariff { bool set; float buy, sell, supply; OldWindow win[4]; };
+    OldTariff o;
+    len = sizeof o;
+    if (nvs_get_blob(h, "tariff", &o, &len) == ESP_OK && len == sizeof o) {
+      S.tariff.set = o.set;
+      S.tariff.buy = o.buy;
+      S.tariff.sell = o.sell;
+      S.tariff.supply = o.supply;
+      for (int i = 0; i < 4; i++) {
+        TouPeriod& p = S.tariff.p[i];
+        p.used = o.win[i].used;
+        p.start = o.win[i].start;
+        p.end = o.win[i].end;
+        p.price = o.win[i].price;
+        snprintf(p.name, sizeof p.name, "%s", p.price == 0 ? "Free" : "Off-peak");
+      }
+    }
+  }
   float f[3];
   len = sizeof f;
   if (nvs_get_blob(h, "fcst", f, &len) == ESP_OK && len == sizeof f) S.lat = f[0], S.lon = f[1], S.kwp = f[2];
@@ -116,7 +140,7 @@ static void save() {
   nvs_set_u8(h, "demo", S.demo ? 1 : 0);
   nvs_set_str(h, "tz", S.tz.c_str());
   nvs_set_u8(h, "bright", S.brightness);
-  nvs_set_blob(h, "tariff", &S.tariff, sizeof(Tariff));
+  nvs_set_blob(h, "tou", &S.tariff, sizeof(Tariff));
   const float f[3] = {S.lat, S.lon, S.kwp};
   nvs_set_blob(h, "fcst", f, sizeof f);
   nvs_set_u8(h, "palette", S.palette);
@@ -206,7 +230,7 @@ input,select{width:100%;height:46px;padding:0 12px;font:inherit;color:var(--ink)
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.chk{display:flex;gap:10px;align-items:center;margin-top:12px}.chk input{width:22px;height:22px}
 button{width:100%;height:50px;margin-top:6px;border:0;border-radius:12px;background:var(--acc);color:#ffffff;font:inherit;font-weight:700;font-size:17px}
 .help{color:var(--muted);font-size:14px;margin:8px 0 0}button.sec{background:var(--line)}button[hidden]{display:none}
-input[type=file]{height:auto;padding:10px}progress{width:100%;height:10px;accent-color:var(--acc);margin-top:10px}.ok{color:var(--acc)}.bad{color:var(--bad)}.kv{display:flex;justify-content:space-between;gap:12px;padding:4px 0}
+input[type=file]{height:auto;padding:10px}.tou{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}.tou[hidden]{display:none}progress{width:100%;height:10px;accent-color:var(--acc);margin-top:10px}.ok{color:var(--acc)}.bad{color:var(--bad)}.kv{display:flex;justify-content:space-between;gap:12px;padding:4px 0}
 )CSS";
 
 static const char* TZS[][2] = {
@@ -220,6 +244,8 @@ static const char* TZS[][2] = {
 };
 
 static const char* OTA_JS = R"JS(
+(()=>{const a=document.getElementById('touadd');if(a){const upd=()=>{a.hidden=!document.querySelector('.tou[hidden]');};
+a.onclick=()=>{const r=document.querySelector('.tou[hidden]');if(r){r.hidden=false;r.querySelector('input').focus();}upd();};upd();}})();
 (()=>{const $=i=>document.getElementById(i),pin=()=>($('pin')||{}).value||'';let timer,latest='';
 const busy=s=>s=='downloading'||s=='writing';
 function show(j){latest=j.latest||'';$('olatest').textContent=j.latest||(j.state=='checking'?'checking...':'not checked yet');
@@ -313,20 +339,35 @@ static std::string page(const std::string& message, bool good) {
       snprintf(b, sizeof b, "%02u:%02u", m / 60, m % 60);
       return std::string(b);
     };
-    h += "<div class=card><h2>Power prices</h2><div class=row><div><label for=buy>Buy price (c/kWh)</label><input id=buy name=buy inputmode=decimal value='" +
-         num(t.buy) + "'></div><div><label for=sell>Feed-in price (c/kWh)</label><input id=sell name=sell inputmode=decimal value='" + num(t.sell) +
-         "'></div></div><label for=supply>Daily supply charge (c/day, optional)</label><input id=supply name=supply inputmode=decimal value='" +
-         (t.supply > 0 ? num(t.supply) : std::string("")) + "'>";
-    h += "<label style='margin-top:16px'>Free power or other time windows (optional)</label>"
-         "<p class=help style='margin:0 0 8px'>During a window, grid power costs the window price instead (0 = free). Leave a row blank if you don't need it.</p>";
-    for (int i = 0; i < 4; i++) {
-      const TariffWindow& w = t.win[i];
+    h += "<div class=card><h2>Power prices</h2><div class=row><div><label for=sell>Feed-in price (c/kWh)</label><input id=sell name=sell inputmode=decimal value='" +
+         num(t.sell) + "'></div><div><label for=supply>Supply charge (c/day)</label><input id=supply name=supply inputmode=decimal placeholder='optional' value='" +
+         (t.supply > 0 ? num(t.supply) : std::string("")) + "'></div></div>";
+    h += "<label style='margin-top:16px'>Time of use (optional)</label>"
+         "<p class=help style='margin:0 0 8px'>Add a period for each price on your bill, e.g. Off-peak, Shoulder and Peak, or a free window at 0c. "
+         "Times can run past midnight (22:00 to 07:00). Clear a period's name and times to remove it.</p><datalist id=tounames>"
+         "<option value='Off-peak'><option value='Shoulder'><option value='Peak'><option value='Free'><option value='Super off-peak'></datalist>";
+    int shown = 0;
+    for (int i = 0; i < TOU_MAX; i++)
+      if (t.p[i].used) shown = i + 1;
+    for (int i = 0; i < TOU_MAX; i++) {
+      const TouPeriod& p = t.p[i];
       const std::string n = std::to_string(i);
-      h += "<div class=row style='grid-template-columns:1fr 1fr 1fr;margin-bottom:6px'><input type=time name=ws" + n + " aria-label='Window " + std::to_string(i + 1) +
-           " from' value='" + (w.used ? hm(w.start) : "") + "'><input type=time name=we" + n + " aria-label='to' value='" + (w.used ? hm(w.end) : "") +
-           "'><input name=wp" + n + " inputmode=decimal placeholder='c/kWh' aria-label='price' value='" + (w.used ? num(w.price) : "") + "'></div>";
+      const bool hide = !p.used && i > shown;  // one empty row is always shown
+      h += "<div class=tou id=tou" + n + (hide ? " hidden" : "") + "><div class=row style='grid-template-columns:3fr 2fr'><input name=tn" + n +
+           " list=tounames maxlength=15 placeholder='Name, e.g. Peak' aria-label='Period " + std::to_string(i + 1) + " name' value='" + (p.used ? esc(p.name) : "") +
+           "'><input name=tp" + n + " inputmode=decimal placeholder='c/kWh' aria-label='price' value='" + (p.used ? num(p.price) : "") +
+           "'></div><div class=row style='grid-template-columns:1fr 1fr 1.3fr;margin-top:6px'><input type=time name=ts" + n + " aria-label='from' value='" +
+           (p.used ? hm(p.start) : "") + "'><input type=time name=te" + n + " aria-label='to' value='" + (p.used ? hm(p.end) : "") + "'><select name=td" + n +
+           " aria-label='days'>";
+      static const char* DAYS[] = {"Every day", "Weekdays", "Weekends"};
+      for (int d = 0; d < 3; d++) h += "<option value=" + std::to_string(d) + (p.days == d ? " selected" : "") + ">" + DAYS[d] + "</option>";
+      h += "</select></div></div>";
     }
-    h += "<p class=help>Prices include GST, as on your bill. Today's costs are counted with the prices in force at the time.</p></div>";
+    h += "<button type=button class=sec id=touadd>Add another period</button>"
+         "<label style='margin-top:16px'>All other times</label><div class=row style='grid-template-columns:3fr 2fr'><input name=bn list=tounames maxlength=15 "
+         "placeholder='Name, e.g. Shoulder' aria-label='Name for all other times' value='" + esc(t.baseName) + "'><input id=buy name=buy inputmode=decimal "
+         "aria-label='Price at all other times, c/kWh' placeholder='c/kWh' value='" + num(t.buy) + "'></div>"
+         "<p class=help>No time of use? Just set this one price and leave the periods empty. Prices include GST, as on your bill. Costs are counted with the price in force at each minute.</p></div>";
 
     h += "<div class=card><h2>Solar forecast (optional)</h2><div class=row><div><label for=lat>Latitude</label><input id=lat name=lat inputmode=decimal placeholder='-33.87' value='" +
          (std::isnan(s.lat) ? std::string("") : num(s.lat)) + "'></div><div><label for=lon>Longitude</label><input id=lon name=lon inputmode=decimal placeholder='151.21' value='" +
@@ -443,18 +484,44 @@ static esp_err_t handleSave(httpd_req_t* req) {
   if (!parseNum("buy", 30, 0, 500, tariff.buy)) return sendPage(req, "400 Bad Request", "Buy price should be a number of cents, e.g. 32.5.", false);
   if (!parseNum("sell", 5, 0, 500, tariff.sell)) return sendPage(req, "400 Bad Request", "Feed-in price should be a number of cents, e.g. 6.", false);
   if (!parseNum("supply", 0, 0, 1000, tariff.supply)) return sendPage(req, "400 Bad Request", "Supply charge should be cents per day, e.g. 110.", false);
-  for (int i = 0; i < 4; i++) {
+  snprintf(tariff.baseName, sizeof tariff.baseName, "%s", trim(formField(body, "bn")).c_str());
+  int nPeriods = 0;
+  for (int i = 0; i < TOU_MAX; i++) {
     const std::string n = std::to_string(i);
-    const std::string ws = trim(formField(body, ("ws" + n).c_str())), we = trim(formField(body, ("we" + n).c_str()));
-    if (ws.empty() && we.empty()) continue;
-    TariffWindow& w = tariff.win[i];
+    const std::string name = trim(formField(body, ("tn" + n).c_str()));
+    const std::string ts = trim(formField(body, ("ts" + n).c_str())), te = trim(formField(body, ("te" + n).c_str()));
+    const std::string tp = trim(formField(body, ("tp" + n).c_str()));
+    if (name.empty() && ts.empty() && te.empty() && tp.empty()) continue;
+    TouPeriod& p = tariff.p[nPeriods];
+    const std::string label = name.empty() ? "Period " + std::to_string(i + 1) : name;
+    if (!parseHm(ts, p.start) || !parseHm(te, p.end) || p.start == p.end)
+      return sendPage(req, "400 Bad Request", label + ": enter a start and end time, e.g. 15:00 to 21:00.", false);
     float price;
-    if (!parseHm(ws, w.start) || !parseHm(we, w.end) || w.start == w.end)
-      return sendPage(req, "400 Bad Request", "Time window " + std::to_string(i + 1) + ": enter a start and end time, e.g. 11:00 to 14:00.", false);
-    if (!parseNum(("wp" + n).c_str(), 0, 0, 500, price)) return sendPage(req, "400 Bad Request", "Time window " + std::to_string(i + 1) + ": the price should be cents per kWh (0 = free).", false);
-    w.price = price;
-    w.used = true;
+    if (tp.empty() || !parseNum(("tp" + n).c_str(), 0, 0, 500, price))
+      return sendPage(req, "400 Bad Request", label + ": the price should be cents per kWh (0 = free).", false);
+    p.price = price;
+    p.days = (uint8_t)constrain(strtol(formField(body, ("td" + n).c_str()).c_str(), nullptr, 10), 0L, 2L);
+    snprintf(p.name, sizeof p.name, "%s", label.c_str());
+    p.used = true;
+    nPeriods++;
   }
+  // periods must not overlap: check every minute of the week
+  for (int d = 0; d < 7; d++)
+    for (int m = 0; m < 1440; m++) {
+      int hit = -1;
+      for (int i = 0; i < nPeriods; i++) {
+        Tariff one;
+        one.p[0] = tariff.p[i];
+        if (periodAt(one, m, d) != 0) continue;
+        if (hit >= 0) {
+          static const char* DAY[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+          char at[48];
+          snprintf(at, sizeof at, " overlap at %02d:%02d on %s.", m / 60, m % 60, DAY[d]);
+          return sendPage(req, "400 Bad Request", std::string(tariff.p[hit].name) + " and " + tariff.p[i].name + at, false);
+        }
+        hit = i;
+      }
+    }
   // screen
   const long palette = strtol(formField(body, "palette").c_str(), nullptr, 10);
   const long dimAfter = strtol(formField(body, "dimafter").c_str(), nullptr, 10);

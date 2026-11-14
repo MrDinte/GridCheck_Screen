@@ -59,7 +59,7 @@ The **phone settings page** (served by the screen) covers:
 - Time zone.
 - Colours (GridCheck, Classic, Ocean) and brightness.
 - **Screen dimming**: after a set time without a touch, and overnight.
-- **Power prices**: buy, feed-in, supply charge, and up to 4 free or peak time windows.
+- **Power prices**: feed-in, supply charge, and **time of use**: up to 6 named periods (Off-peak, Shoulder, Peak, Free...) with times, weekdays/weekends and prices, plus a price for all other times.
 - Forecast location and panel size.
 - Firmware updates.
 - An optional PIN.
@@ -68,6 +68,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.6.0**: time-of-use prices: named periods (Off-peak, Shoulder, Peak, Free...) with times, days and prices; the screen shows the price now and when it changes, and says when power is free or at its dearest. Calmer moving dots. Installs over Wi-Fi from 0.5.0.
 - **0.5.0**: signed updates over Wi-Fi (from this site or a file), with automatic roll-back. Needs one USB install; history starts afresh because the flash layout changed (settings are kept).
 - **0.4.0**: three colour palettes and screen dimming.
 - **0.3.0**: all eight pages, prices, forecast, history storage, and the GridCheck look.

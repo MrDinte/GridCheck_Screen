@@ -2,6 +2,7 @@
 
 #include "ui_common.h"
 
+#include <strings.h>
 #include <time.h>
 
 #ifndef EH_VERSION
@@ -207,8 +208,8 @@ static void buildLink(lv_obj_t* parent, Link& k, int nx, int ny, lv_color_t colo
 
 static void setLink(Link& k, float kw, bool intoHub) {
   const int dir = fabsf(kw) > IDLE_KW ? (intoHub ? 1 : -1) : 0;
-  // Faster dots for more power: ~1.8 s at a trickle down to ~0.5 s at 8 kW.
-  uint32_t period = (uint32_t)constrain(1800.0f / (0.6f + fabsf(kw) * 0.4f), 450.0f, 2400.0f);
+  // Faster dots for more power, but calm: ~4.5 s at a trickle down to ~1.2 s at 8 kW.
+  uint32_t period = (uint32_t)constrain(4500.0f / (0.6f + fabsf(kw) * 0.4f), 1200.0f, 6000.0f);
   period = period / 100 * 100;
   if (dir == k.dir && (dir == 0 || period == k.periodMs)) return;
   k.dir = dir;
@@ -458,6 +459,40 @@ void rebuild() {
 void showPage(int page) { lv_obj_set_tile_id(tiles, page, 0, LV_ANIM_OFF); }
 
 // ---- update ----------------------------------------------------------------
+// Time-of-use price right now (only when the clock is set and periods exist).
+struct TouNow {
+  bool on = false;
+  int idx = -1;
+  float price = 0;
+  bool free = false, top = false;  // top: the dearest price of the day, with cheaper ones about
+  char until[8] = "";
+};
+static TouNow touNow(const Tariff& t) {
+  TouNow n;
+  const time_t now = time(nullptr);
+  struct tm tm;
+  localtime_r(&now, &tm);
+  if (!t.hasPeriods() || tm.tm_year < 124) return n;
+  const int m = tm.tm_hour * 60 + tm.tm_min;
+  n.on = true;
+  n.idx = periodAt(t, m, tm.tm_wday);
+  n.price = priceAt(t, m, tm.tm_wday);
+  float lo = t.buy, hi = t.buy;
+  for (const auto& p : t.p)
+    if (p.used) lo = fminf(lo, p.price), hi = fmaxf(hi, p.price);
+  n.free = n.price < 0.005f;
+  n.top = hi - lo > 0.5f && n.price > hi - 0.005f;
+  const int until = (m + minutesUntilChange(t, m, tm.tm_wday)) % 1440;
+  snprintf(n.until, sizeof n.until, "%02d:%02d", until / 60, until % 60);
+  return n;
+}
+
+static void priceText(char* out, size_t n, float c) {
+  if (c < 0.005f) snprintf(out, n, "free");
+  else if (fabsf(c - roundf(c)) < 0.05f) snprintf(out, n, "%.0fc", c);
+  else snprintf(out, n, "%.1fc", c);
+}
+
 static void setStatus(const char* text, lv_color_t color) {
   lv_label_set_text(statusLbl, text);
   lv_obj_set_style_text_color(statusLbl, color, 0);
@@ -544,6 +579,7 @@ void update() {
   }
 
   // status line
+  const TouNow tou = touNow(s.tariff);
   const bool fresh = l.ok && millis() - l.updatedMs < 30000;
   if (installing || os.state == ota::State::Done) {
     char b[60];
@@ -556,10 +592,18 @@ void update() {
     setStatus(net::apMode() ? "Can't join Wi-Fi - fix it from your phone" : "Joining Wi-Fi...", C_MUTED);
   } else if (!fresh) {
     setStatus(l.updatedMs ? "Can't reach inverter - swipe for details" : "Connecting to inverter...", C_MUTED);
+  } else if (tou.on && tou.free) {
+    char b[48];
+    snprintf(b, sizeof b, "Free power until %s - use it now", tou.until);
+    setStatus(b, C_GOOD);
   } else if (l.grid < -0.3f) {
     setStatus("Spare solar - run big appliances now", C_GOOD);
   } else if (l.solar > l.house + 0.2f && l.battery > 0.1f) {
     setStatus("Solar is charging the battery", C_GOOD);
+  } else if (l.grid > 0.3f && tou.on && tou.top) {
+    char b[48];
+    snprintf(b, sizeof b, "%.10s price until %s - hold off", periodName(s.tariff, tou.idx), tou.until);
+    setStatus(b, C_WARN);
   } else if (l.grid > 0.3f) {
     setStatus("On grid power - hold off big loads", C_WARN);
   } else if (l.battery < -0.1f) {
@@ -573,8 +617,20 @@ void update() {
   // top chips
   if (isnan(l.solarToday)) lv_label_set_text(chipSolar, "Solar today  -");
   else lv_label_set_text_fmt(chipSolar, "Solar today  #%s %.1f kWh#", hx(C_SOLAR), l.solarToday);
-  if (isnan(l.solarYesterday)) lv_label_set_text(chipAside, "Yesterday -");
-  else lv_label_set_text_fmt(chipAside, "Yesterday  #%s %.1f kWh#", hx(C_SOLAR), l.solarYesterday);
+  if (tou.on) {
+    // what grid power costs right now, instead of yesterday's solar
+    char pr[12];
+    priceText(pr, sizeof pr, tou.price);
+    const lv_color_t c = tou.free ? C_GOOD : tou.top ? C_WARN : C_INK;
+    if (tou.free && !strcasecmp(periodName(s.tariff, tou.idx), "Free"))
+      lv_label_set_text_fmt(chipAside, "#%s Free# until %s", hx(c), tou.until);
+    else
+      lv_label_set_text_fmt(chipAside, "%s  #%s %s# until %s", periodName(s.tariff, tou.idx), hx(c), pr, tou.until);
+  } else if (isnan(l.solarYesterday)) {
+    lv_label_set_text(chipAside, "Yesterday -");
+  } else {
+    lv_label_set_text_fmt(chipAside, "Yesterday  #%s %.1f kWh#", hx(C_SOLAR), l.solarYesterday);
+  }
 
   if (!fresh) {
     // No current reading: show dashes rather than stale or made-up numbers.

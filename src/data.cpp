@@ -29,15 +29,6 @@ void allocateFlows(float solar, float house, float grid, float battery, float f[
   for (int i = 0; i < FLOW_COUNT; i++) f[i] = fmaxf(0, f[i]);
 }
 
-float priceAt(const Tariff& t, int m) {
-  for (const auto& w : t.win) {
-    if (!w.used || w.start == w.end) continue;
-    const bool in = w.start < w.end ? (m >= w.start && m < w.end) : (m >= w.start || m < w.end);
-    if (in) return w.price;
-  }
-  return t.buy;
-}
-
 namespace data {
 
 static constexpr int MINUTES = 24 * 60;
@@ -217,7 +208,7 @@ void addReading(const Live& l) {
     float f[FLOW_COUNT];
     allocateFlows(last.solar, last.house, last.grid, last.battery, f);
     for (int i = 0; i < FLOW_COUNT; i++) cur.flows[i] += f[i] * h;
-    cur.spent += fmaxf(0, last.grid) * h * priceAt(s.tariff, t.tm_hour * 60 + t.tm_min) / 100.0f;
+    cur.spent += fmaxf(0, last.grid) * h * priceAt(s.tariff, t.tm_hour * 60 + t.tm_min, t.tm_wday) / 100.0f;
     cur.earned += fmaxf(0, -last.grid) * h * s.tariff.sell / 100.0f;
   }
   lastMs = ms;

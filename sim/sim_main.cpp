@@ -30,7 +30,6 @@ void allocateFlows(float solar, float house, float grid, float battery, float f[
   f[GRID_HOUSE] = fminf(g, nh - f[SOLAR_HOUSE] - f[BATT_HOUSE]); g -= f[GRID_HOUSE];
   f[GRID_BATT] = fminf(g, nb - f[SOLAR_BATT]);
 }
-float priceAt(const Tariff& t, int) { return t.buy; }
 
 static std::vector<MinuteSample> mins;
 static std::vector<DayRecord> dayv;  // 30 days, oldest first; last = today
@@ -110,6 +109,14 @@ int main(int argc, char** argv) {
 
   S.host = "192.168.1.50"; S.demo = false;
   S.tariff.set = true; S.tariff.buy = 32.5f; S.tariff.sell = 6; S.tariff.supply = 110;
+  if (const char* tou = getenv("SIM_TOU")) {
+    // SIM_TOU=free|peak|off: one period covering the whole day, plus a dearer one elsewhere in the week
+    S.tariff.p[0].used = true; S.tariff.p[0].start = 0; S.tariff.p[0].end = 1439;
+    S.tariff.p[1].used = true; S.tariff.p[1].start = 1439; S.tariff.p[1].end = 0; S.tariff.p[1].price = 60; strcpy(S.tariff.p[1].name, "Peak");
+    if (!strcmp(tou, "free")) { strcpy(S.tariff.p[0].name, "Free"); S.tariff.p[0].price = 0; }
+    if (!strcmp(tou, "peak")) { strcpy(S.tariff.p[0].name, "Peak"); S.tariff.p[0].price = 60; S.tariff.p[1].price = 10; strcpy(S.tariff.p[1].name, "Off-peak"); }
+    if (!strcmp(tou, "off")) { strcpy(S.tariff.p[0].name, "Off-peak"); S.tariff.p[0].price = 18.5f; }
+  }
   makeHistory(time(nullptr));
   const char* scene = argc > 1 ? argv[1] : "day";
   L.ok = true; L.updatedMs = fakeMs;
