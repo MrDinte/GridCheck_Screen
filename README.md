@@ -68,6 +68,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.6.4**: fixes online updates sitting at 0% for ever: the download now runs in the update checker (which already has its memory) instead of a new background task that could fail to start for lack of internal RAM.
 - **0.6.3**: updates show progress straight away (the flash is erased while downloading, not all first) and say which step they're on.
 - **0.6.2**: Home and Settings buttons on every page, and tap a page dot to jump to that page.
 - **0.6.1**: fixes "can't connect" when checking for updates (secure connections now use the board's PSRAM instead of its small internal memory, which the screen buffers fill); clearer connection errors. Also helps the solar forecast download.

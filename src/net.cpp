@@ -444,6 +444,15 @@ static esp_err_t sendPage(httpd_req_t* req, const char* status, const std::strin
 
 static esp_err_t handleRoot(httpd_req_t* req) { return sendPage(req, "200 OK", "", true); }
 
+static void restartTask(void*);
+/** Restart in a couple of seconds (after the reply is sent); right away if there's no memory for that. */
+static void restartSoon() {
+  if (xTaskCreate(restartTask, "restart", 2048, nullptr, 1, nullptr) != pdPASS) {
+    vTaskDelay(pdMS_TO_TICKS(1500));
+    esp_restart();
+  }
+}
+
 static void restartTask(void*) {
   vTaskDelay(pdMS_TO_TICKS(2000));
   esp_restart();
@@ -596,7 +605,7 @@ static esp_err_t handleSave(httpd_req_t* req) {
     tzset();
   }
   if (wifiChanged) {
-    xTaskCreate(restartTask, "restart", 2048, nullptr, 1, nullptr);
+    restartSoon();
     return sendPage(req, "200 OK",
                     "Saved. The screen is restarting to join \"" + ssid +
                         "\". Reconnect your phone to your home Wi-Fi, then open the address shown at the bottom of the screen.",
@@ -719,8 +728,9 @@ static esp_err_t handleUpload(httpd_req_t* req) {
   }
   if (!ota::uploadEnd(err)) return sendError(req, "400 Bad Request", err);
   ESP_LOGI(TAG, "firmware uploaded, restarting");
-  xTaskCreate(restartTask, "restart", 2048, nullptr, 1, nullptr);
-  return sendOtaStatus(req);
+  const esp_err_t r = sendOtaStatus(req);
+  restartSoon();
+  return r;
 }
 
 // Anything else (including phones' captive-portal checks) goes to the settings page.

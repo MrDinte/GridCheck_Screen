@@ -30,6 +30,8 @@ static Status st;
 static std::string latestUrl;  // firmware file for `st.latest`
 static volatile bool busy = false;
 static volatile bool checkRequested = true;  // check once as soon as Wi-Fi is up
+static volatile bool installRequested = false;  // run by the checker task, which already has its memory
+static std::string installUrl;
 
 // One update being written (from the phone upload or the online download).
 static esp_ota_handle_t wHandle = 0;
@@ -229,6 +231,8 @@ static bool fetchManifest(std::string& version, std::string& url, std::string& e
   return ok;
 }
 
+static void runInstall(const std::string& url);
+
 static void checkerTask(void*) {
   bool confirmed = false;
   uint32_t lastCheck = 0;
@@ -242,6 +246,15 @@ static void checkerTask(void*) {
         esp_ota_mark_app_valid_cancel_rollback();
         ESP_LOGI(TAG, "new firmware %s confirmed", EH_VERSION);
       }
+    }
+    if (installRequested) {
+      installRequested = false;
+      std::string url;
+      {
+        std::lock_guard<std::mutex> g(lock);
+        url = installUrl;
+      }
+      runInstall(url);
     }
     const bool due = checkRequested || (lastCheck && millis() - lastCheck > 12UL * 3600 * 1000);
     if (due && !busy && net::connected()) {
@@ -267,7 +280,9 @@ static void checkerTask(void*) {
   }
 }
 
-void begin() { xTaskCreate(checkerTask, "ota", 8192, nullptr, 1, nullptr); }
+void begin() {
+  if (xTaskCreate(checkerTask, "ota", 8192, nullptr, 1, nullptr) != pdPASS) ESP_LOGE(TAG, "no memory for the update checker");
+}
 
 // ---- online install -----------------------------------------------------------------
 static bool download(const std::string& url, std::string& err) {
@@ -308,11 +323,9 @@ static bool download(const std::string& url, std::string& err) {
   return ok;
 }
 
-static void installTask(void* arg) {
-  std::string* url = (std::string*)arg;
+static void runInstall(const std::string& url) {
   std::string err;
-  const bool ok = download(*url, err);
-  delete url;
+  const bool ok = download(url, err);
   if (ok) {
     set(State::Done, 100, "Update installed. Restarting...");
     ESP_LOGI(TAG, "online update installed, restarting");
@@ -322,7 +335,6 @@ static void installTask(void* arg) {
   set(State::Failed, 0, "Update failed: " + err + ". The current version keeps running.");
   ESP_LOGE(TAG, "online update failed: %s", err.c_str());
   busy = false;
-  vTaskDelete(nullptr);
 }
 
 bool installOnline(std::string& err) {
@@ -341,7 +353,11 @@ bool installOnline(std::string& err) {
   }
   busy = true;
   set(State::Downloading, 0, "Starting update...");
-  xTaskCreate(installTask, "ota-install", 8192, new std::string(url), 2, nullptr);
+  {
+    std::lock_guard<std::mutex> g(lock);
+    installUrl = url;
+  }
+  installRequested = true;  // picked up by the checker task within a second
   return true;
 }
 
