@@ -57,7 +57,7 @@ The **phone settings page** (served by the screen) covers:
 - Inverter IP, port and plant id.
 - Demo mode.
 - Time zone.
-- Colours (GridCheck, Classic, Ocean) and brightness.
+- Colours (GridCheck, Classic, Ocean), theme (dark, light, or auto by time of day) and brightness.
 - **Screen dimming**: after a set time without a touch, and overnight.
 - **Power prices**: feed-in, supply charge, and **time of use**: up to 6 named periods (Off-peak, Shoulder, Peak, Free...) with times, weekdays/weekends and prices, plus a price for all other times.
 - Forecast location and panel size.
@@ -68,6 +68,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.6.5**: light and dark themes: **Theme** button on the Settings & info page and on the phone page (Dark, Light, or Auto: light by day, dark during the night hours).
 - **0.6.4**: fixes online updates sitting at 0% for ever: the download now runs in the update checker (which already has its memory) instead of a new background task that could fail to start for lack of internal RAM.
 - **0.6.3**: updates show progress straight away (the flash is erased while downloading, not all first) and say which step they're on.
 - **0.6.2**: Home and Settings buttons on every page, and tap a page dot to jump to that page.

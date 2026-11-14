@@ -39,12 +39,20 @@ struct Link {
 };
 static Link lSolar, lBatt, lGrid, lHouse;
 
-static lv_obj_t *iWifi, *iAddr, *iInv, *iErr, *iUpd, *iVer, *resetBtn, *resetLbl, *palLbl, *dimLbl;
+static lv_obj_t *iWifi, *iAddr, *iInv, *iErr, *iUpd, *iVer, *resetBtn, *resetLbl, *palLbl, *themeLbl, *dimLbl;
 static bool forceFull = true;
 
 // ---- helpers ---------------------------------------------------------------
-void applyPalette(int p) {
+void applyPalette(int p, bool light) {
   struct Pal { uint32_t bg, tile, ink, muted, faint, accent, solar, grid, batt, good, warn, ok; };
+  static const Pal lights[3] = {
+      // GridCheck light: white, pink and near-black (same as the web dashboard)
+      {0xffffff, 0xf6f1f4, 0x141116, 0x6d6671, 0xe6dde3, 0xff2d87, 0xd3175f, 0x7f7886, 0xe85e9d, 0xd3175f, 0xd97706, 0x6d6671},
+      // Classic light
+      {0xf4f6f7, 0xe7ecef, 0x15212b, 0x5b6975, 0xcdd6dc, 0x0c8f84, 0xc76a00, 0x6550e8, 0x0c8f84, 0x0c8f84, 0xdf4a2b, 0xb7770b},
+      // Ocean light
+      {0xf5f9ff, 0xe7effb, 0x0c1a2c, 0x51637b, 0xd0dcee, 0x0a8ec4, 0xa06d00, 0x6b7fa3, 0x0a8ec4, 0x0a8ec4, 0xd4512b, 0x8a6a00},
+  };
   static const Pal pals[3] = {
       // GridCheck: pink, black and white
       {0x0b0a0d, 0x18151b, 0xffffff, 0xa39ca8, 0x2c2830, 0xff2d87, 0xff4b97, 0xa39ca8, 0xffa8cd, 0xff4b97, 0xffb020, 0xa39ca8},
@@ -53,7 +61,8 @@ void applyPalette(int p) {
       // Ocean: deep blue, yellow sun and cyan
       {0x071320, 0x0f2034, 0xeaf3ff, 0x8ea4c2, 0x1c3350, 0x3fd0ff, 0xffd23f, 0x8fa5cc, 0x3fd0ff, 0x3fd0ff, 0xff8a5c, 0xffd23f},
   };
-  const Pal& c = pals[p >= 0 && p < 3 ? p : 0];
+  const int i = p >= 0 && p < 3 ? p : 0;
+  const Pal& c = light ? lights[i] : pals[i];
   C_BG = lv_color_hex(c.bg);
   C_TILE = lv_color_hex(c.tile);
   C_INK = lv_color_hex(c.ink);
@@ -369,7 +378,7 @@ static void resetEvent(lv_event_t* e) {
     }
   } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
     pressedAt = 0;
-    lv_label_set_text(resetLbl, "Reset all (hold 5 s)");
+    lv_label_set_text(resetLbl, "Reset (hold 5 s)");
   }
 }
 
@@ -413,9 +422,9 @@ static void buildInfo(lv_obj_t* page) {
   lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
   lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
   lv_obj_set_style_pad_column(row, 14, 0);
-  auto pill = [&](lv_obj_t** lbl, lv_event_cb_t cb, lv_color_t color) {
+  auto pill = [&](lv_obj_t** lbl, lv_event_cb_t cb, lv_color_t color, int w) {
     lv_obj_t* b = lv_btn_create(row);
-    lv_obj_set_size(b, 268, 56);
+    lv_obj_set_size(b, w, 56);
     lv_obj_set_style_bg_color(b, C_TILE, 0);
     lv_obj_set_style_radius(b, 28, 0);
     lv_obj_set_style_shadow_width(b, 0, 0);
@@ -424,20 +433,21 @@ static void buildInfo(lv_obj_t* page) {
     lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, nullptr);
     return b;
   };
-  pill(&palLbl, [](lv_event_t*) { net::setPalette((uint8_t)((net::settings().palette + 1) % 3)); }, C_INK);
+  pill(&palLbl, [](lv_event_t*) { net::setPalette((uint8_t)((net::settings().palette + 1) % 3)); }, C_INK, 236);
+  pill(&themeLbl, [](lv_event_t*) { net::setTheme((uint8_t)((net::settings().theme + 1) % 3)); }, C_INK, 178);
   pill(&dimLbl, [](lv_event_t*) {
     const uint8_t cur = net::settings().dimAfterMin;
     int i = 0;
     while (i < 5 && DIM_CHOICES[i] != cur) i++;
     net::setDimAfter(DIM_CHOICES[(i + 1) % 5]);
-  }, C_INK);
+  }, C_INK, 210);
 
   resetBtn = lv_btn_create(row);
-  lv_obj_set_size(resetBtn, 300, 56);
+  lv_obj_set_size(resetBtn, 236, 56);
   lv_obj_set_style_bg_color(resetBtn, C_TILE, 0);
   lv_obj_set_style_radius(resetBtn, 28, 0);
   lv_obj_set_style_shadow_width(resetBtn, 0, 0);
-  resetLbl = label(resetBtn, &lv_font_montserrat_20, C_WARN, "Reset all (hold 5 s)");
+  resetLbl = label(resetBtn, &lv_font_montserrat_20, C_WARN, "Reset (hold 5 s)");
   lv_obj_center(resetLbl);
   lv_obj_add_event_cb(resetBtn, resetEvent, LV_EVENT_ALL, nullptr);
 }
@@ -585,6 +595,7 @@ void update() {
   else lv_label_set_text(iInv, "not set up yet");
   lv_label_set_text(iErr, l.error[0] ? l.error : "none");
   lv_label_set_text_fmt(palLbl, "Colours: %s", PALETTE_NAMES[s.palette % 3]);
+  lv_label_set_text_fmt(themeLbl, "Theme: %s", THEME_NAMES[s.theme % 3]);
   if (s.dimAfterMin) lv_label_set_text_fmt(dimLbl, "Dim after %u min", s.dimAfterMin);
   else lv_label_set_text(dimLbl, "Screen always on");
   if (l.updatedMs) lv_label_set_text_fmt(iUpd, "%lu s ago", (unsigned long)((millis() - l.updatedMs) / 1000));

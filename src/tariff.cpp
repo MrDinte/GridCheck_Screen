@@ -2,6 +2,20 @@
 // No hardware code here, so the PC simulator and tests use it too.
 #include "net.h"
 
+#include <ctime>
+
+bool themeIsLight(const Settings& s) {
+  if (s.theme == 1) return true;
+  if (s.theme != 2) return false;
+  const time_t now = time(nullptr);
+  if (now < 1700000000) return false;  // clock not set yet: stay dark
+  struct tm t;
+  localtime_r(&now, &t);
+  const int m = t.tm_hour * 60 + t.tm_min;
+  const bool night = s.nightStart < s.nightEnd ? (m >= s.nightStart && m < s.nightEnd) : (m >= s.nightStart || m < s.nightEnd);
+  return !night;
+}
+
 int periodAt(const Tariff& t, int m, int wday) {
   for (int i = 0; i < TOU_MAX; i++) {
     const TouPeriod& p = t.p[i];

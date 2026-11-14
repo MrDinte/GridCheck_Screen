@@ -135,7 +135,8 @@ static void uiTask(void*) {
   lv_indev_drv_register(&indev);
 
   int palette = net::settings().palette;
-  ui::applyPalette(palette);
+  bool light = themeIsLight(net::settings());
+  ui::applyPalette(palette, light);
   ui::create();
   lv_refr_now(nullptr);
   lastTouchMs = millis();
@@ -147,9 +148,11 @@ static void uiTask(void*) {
     if (millis() - lastUi > 500) {
       lastUi = millis();
       const Settings s = net::settings();
-      if (s.palette != palette) {  // colours changed (phone page or on-screen button)
+      const bool wantLight = themeIsLight(s);
+      if (s.palette != palette || wantLight != light) {  // colours or theme changed (or Auto switched day/night)
         palette = s.palette;
-        ui::applyPalette(palette);
+        light = wantLight;
+        ui::applyPalette(palette, light);
         ui::rebuild();
       }
       ui::update();

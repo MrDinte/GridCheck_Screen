@@ -78,6 +78,7 @@ std::string ssidInUse() { return "HomeWiFi"; }
 void factoryReset() {}
 void setPalette(uint8_t p) { S.palette = p; }
 void setDimAfter(uint8_t m) { S.dimAfterMin = m; }
+void setTheme(uint8_t t) { S.theme = t; }
 }
 
 namespace ota {
@@ -126,7 +127,9 @@ int main(int argc, char** argv) {
   if (!strcmp(scene, "error")) { L = Live(); L.ok = false; L.updatedMs = 1; strcpy(L.error, "the inverter hung up while reading 30005 from unit 247. Is another device (e.g. Home Assistant) connected to it?"); }
   if (!strcmp(scene, "setup")) { L = Live(); S.host = ""; }
 
-  if (getenv("SIM_PALETTE")) { S.palette = atoi(getenv("SIM_PALETTE")); ui::applyPalette(S.palette); }
+  if (getenv("SIM_PALETTE")) S.palette = atoi(getenv("SIM_PALETTE"));
+  if (getenv("SIM_LIGHT")) S.theme = 1;
+  if (getenv("SIM_PALETTE") || getenv("SIM_LIGHT")) ui::applyPalette(S.palette, S.theme == 1);
   ui::create();
   for (int i = 0; i < 60; i++) { fakeMs += 33; lv_tick_inc(33); lv_timer_handler(); }
   if (argc > 2) {

@@ -35,8 +35,8 @@ constexpr int W = board::SCREEN_W;
 constexpr int TOP_H = 72, BOT_H = 64;
 constexpr int BODY_H = board::SCREEN_H - TOP_H - BOT_H;  // 464
 
-/** Switch colours: 0 GridCheck, 1 Classic, 2 Ocean. Call before building the screen. */
-void applyPalette(int palette);
+/** Switch colours: 0 GridCheck, 1 Classic, 2 Ocean; light or dark. Call before building the screen. */
+void applyPalette(int palette, bool light = false);
 /** A colour as "rrggbb" for LVGL recolour text (#rrggbb text#). */
 const char* hx(lv_color_t c);
 

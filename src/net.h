@@ -55,6 +55,7 @@ struct Settings {
   float lat = NAN, lon = NAN, kwp = 0;  // optional, for the Open-Meteo solar forecast
   // screen
   uint8_t palette = 0;          // 0 GridCheck (pink), 1 Classic, 2 Ocean
+  uint8_t theme = 0;            // 0 dark, 1 light, 2 auto (light by day, dark during the night hours below)
   uint8_t dimAfterMin = 5;      // dim after this many minutes without a touch; 0 = always on
   uint8_t dimLevel = 10;        // brightness when dimmed, %; 0 = backlight off
   bool nightDim = true;         // also dim overnight
@@ -64,6 +65,10 @@ struct Settings {
 
 /** Palette names, index = Settings::palette. */
 inline const char* const PALETTE_NAMES[3] = {"GridCheck", "Classic", "Ocean"};
+/** Theme names, index = Settings::theme. */
+inline const char* const THEME_NAMES[3] = {"Dark", "Light", "Auto"};
+/** Should the screen be light right now? (Auto: light outside the night hours.) */
+bool themeIsLight(const Settings& s);
 /** Timeout choices offered on screen and on the phone page (minutes; 0 = always on). */
 inline const uint8_t DIM_CHOICES[5] = {0, 1, 5, 15, 30};
 
@@ -81,5 +86,6 @@ std::string ssidInUse();
 void factoryReset();
 /** Change and save one screen setting from the on-screen buttons. */
 void setPalette(uint8_t palette);
+void setTheme(uint8_t theme);
 void setDimAfter(uint8_t minutes);
 }  // namespace net

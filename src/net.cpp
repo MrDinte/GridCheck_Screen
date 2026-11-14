@@ -117,6 +117,8 @@ static void load() {
   if (nvs_get_blob(h, "fcst", f, &len) == ESP_OK && len == sizeof f) S.lat = f[0], S.lon = f[1], S.kwp = f[2];
   nvs_get_u8(h, "palette", &S.palette);
   if (S.palette > 2) S.palette = 0;
+  nvs_get_u8(h, "theme", &S.theme);
+  if (S.theme > 2) S.theme = 0;
   nvs_get_u8(h, "dimafter", &S.dimAfterMin);
   nvs_get_u8(h, "dimlevel", &S.dimLevel);
   uint8_t nd = 1;
@@ -144,6 +146,7 @@ static void save() {
   const float f[3] = {S.lat, S.lon, S.kwp};
   nvs_set_blob(h, "fcst", f, sizeof f);
   nvs_set_u8(h, "palette", S.palette);
+  nvs_set_u8(h, "theme", S.theme);
   nvs_set_u8(h, "dimafter", S.dimAfterMin);
   nvs_set_u8(h, "dimlevel", S.dimLevel);
   nvs_set_u8(h, "nightdim", S.nightDim ? 1 : 0);
@@ -155,6 +158,12 @@ static void save() {
   nvs_commit(h);
   nvs_close(h);
   version++;
+}
+
+void setTheme(uint8_t theme) {
+  std::lock_guard<std::mutex> g(lock);
+  S.theme = theme % 3;
+  save();
 }
 
 void setPalette(uint8_t palette) {
@@ -312,6 +321,9 @@ static std::string page(const std::string& message, bool good) {
   for (auto& z : TZS) h += std::string("<option value='") + z[0] + "'" + (s.tz == z[0] ? " selected" : "") + ">" + z[1] + "</option>";
   h += "</select><label for=palette>Colours</label><select id=palette name=palette>";
   for (int i = 0; i < 3; i++) h += "<option value=" + std::to_string(i) + (s.palette == i ? " selected" : "") + ">" + PALETTE_NAMES[i] + "</option>";
+  h += "</select><label for=theme>Theme</label><select id=theme name=theme>";
+  static const char* THEME_TEXT[3] = {"Dark", "Light", "Auto: light by day, dark during the night hours below"};
+  for (int i = 0; i < 3; i++) h += "<option value=" + std::to_string(i) + (s.theme == i ? " selected" : "") + ">" + THEME_TEXT[i] + "</option>";
   h += "</select><div class=row><div><label for=bright>Brightness (%)</label><input id=bright name=bright inputmode=numeric value='" + std::to_string(s.brightness) +
        "'></div><div><label for=dimlevel>Dimmed brightness (%)</label><input id=dimlevel name=dimlevel inputmode=numeric value='" + std::to_string(s.dimLevel) +
        "'></div></div><label for=dimafter>Dim the screen</label><select id=dimafter name=dimafter>";
@@ -579,6 +591,7 @@ static esp_err_t handleSave(httpd_req_t* req) {
     S.brightness = (uint8_t)constrain(bright, 5L, 100L);
     S.tariff = tariff;
     S.palette = (uint8_t)constrain(palette, 0L, 2L);
+    if (hasField(body, "theme")) S.theme = (uint8_t)constrain(strtol(formField(body, "theme").c_str(), nullptr, 10), 0L, 2L);
     S.dimAfterMin = (uint8_t)constrain(dimAfter, 0L, 60L);
     S.dimLevel = (uint8_t)dimLevel;
     S.nightDim = nightDim;
