@@ -68,6 +68,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.7.1**: test release for the update dot (no other changes).
 - **0.6**: everything since the first Wi-Fi update release:
   - **Time-of-use prices**: named periods (Off-peak, Shoulder, Peak, Free...) with times, days and prices. The screen shows the price now and when it changes, and says when power is free or at its dearest.
   - **Home and Settings buttons** on every page, and tap a page dot to jump to that page.
