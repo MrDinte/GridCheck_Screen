@@ -594,7 +594,8 @@ void update() {
   const ota::Status os = ota::status();
   const bool installing = os.state == ota::State::Downloading || os.state == ota::State::Writing;
   if (installing) {
-    lv_label_set_text_fmt(iVer, "Installing update... %d%%", os.percent);
+    if (os.percent == 0 && os.message.length()) lv_label_set_text(iVer, os.message.c_str());  // connecting...
+    else lv_label_set_text_fmt(iVer, "Installing update... %d%%", os.percent);
     lv_obj_set_style_text_color(iVer, C_OK, 0);
   } else if (os.state == ota::State::Done) {
     lv_label_set_text(iVer, "Update installed - restarting");

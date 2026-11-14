@@ -76,7 +76,9 @@ static bool writeBegin(size_t size, std::string& err) {
     err = "that doesn't look like a GridCheck firmware file (wrong size)";
     return false;
   }
-  const esp_err_t e = esp_ota_begin(wPart, size, &wHandle);
+  // Erase as it goes (sector by sector while writing) rather than all 1.7 MB
+  // up front, which took ~20 s with the progress stuck at 0%.
+  const esp_err_t e = esp_ota_begin(wPart, OTA_WITH_SEQUENTIAL_WRITES, &wHandle);
   if (e != ESP_OK) {
     err = std::string("can't start the update: ") + esp_err_to_name(e);
     return false;
@@ -275,8 +277,10 @@ static bool download(const std::string& url, std::string& err) {
     return false;
   }
   bool ok = false;
+  set(State::Downloading, 0, "Connecting to the update site...");
   const int code = openGet(c);
   const int64_t len = esp_http_client_get_content_length(c);
+  if (code == 200) set(State::Downloading, 0, "Downloading update...");
   if (code != 200) {
     err = code < 0 ? "can't connect to the update site (" + connectProblem() + ")" : "update download answered " + std::to_string(code);
   } else if (len <= 0) {
@@ -336,7 +340,7 @@ bool installOnline(std::string& err) {
     url = latestUrl;
   }
   busy = true;
-  set(State::Downloading, 0, "Downloading update...");
+  set(State::Downloading, 0, "Starting update...");
   xTaskCreate(installTask, "ota-install", 8192, new std::string(url), 2, nullptr);
   return true;
 }
