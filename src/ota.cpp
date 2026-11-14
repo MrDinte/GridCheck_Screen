@@ -237,9 +237,9 @@ static void checkerTask(void*) {
   bool confirmed = false;
   uint32_t lastCheck = 0;
   for (;;) {
-    // Confirm this firmware once it has been running fine for a minute, so the
-    // bootloader won't go back to the previous version.
-    if (!confirmed && millis() > 60000) {
+    // Confirm this firmware once it has been running fine for 20 s (screen up,
+    // tasks running), so the bootloader won't go back to the previous version.
+    if (!confirmed && millis() > 20000) {
       confirmed = true;
       esp_ota_img_states_t s;
       if (esp_ota_get_state_partition(esp_ota_get_running_partition(), &s) == ESP_OK && s == ESP_OTA_IMG_PENDING_VERIFY) {
@@ -281,6 +281,17 @@ static void checkerTask(void*) {
 }
 
 void begin() {
+  // Did a newer version fail to start, so the bootloader went back to this one?
+  const esp_partition_t* bad = esp_ota_get_last_invalid_partition();
+  esp_app_desc_t d;
+  // (only versions stamped by 0.6.7 and later look like "1.2.3")
+  if (bad && esp_ota_get_partition_description(bad, &d) == ESP_OK && strchr(d.version, '.') && d.version[0] >= '0' &&
+      d.version[0] <= '9' && cmpVersion(d.version, EH_VERSION) > 0) {
+    char b[160];
+    snprintf(b, sizeof b, "Version %s was installed but didn't start properly, so the screen went back to %s.", d.version, EH_VERSION);
+    set(State::Failed, 0, b);
+    ESP_LOGW(TAG, "%s", b);
+  }
   if (xTaskCreate(checkerTask, "ota", 8192, nullptr, 1, nullptr) != pdPASS) ESP_LOGE(TAG, "no memory for the update checker");
 }
 
