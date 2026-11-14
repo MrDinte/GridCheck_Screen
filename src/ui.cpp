@@ -19,7 +19,7 @@ namespace ui {
 
 // ---- widgets ---------------------------------------------------------------
 static lv_obj_t *clockLbl, *dateLbl, *chipSolar, *chipAside;
-static lv_obj_t *statusPill, *statusDot, *statusLbl, *hintLbl, *homeBtn, *homeIcon, *setBtn, *setIcon;
+static lv_obj_t *statusPill, *statusDot, *statusLbl, *hintLbl, *homeBtn, *homeIcon, *setBtn, *setIcon, *updDot;
 static constexpr int PAGES = 8;  // Now, Today, Solar, Money, Flow, Battery, History, Info
 static lv_obj_t *dots[PAGES];
 static lv_obj_t *tiles;
@@ -193,6 +193,20 @@ static void buildBars(lv_obj_t* scr) {
   };
   setBtn = navBtn(&setIcon, LV_SYMBOL_SETTINGS, PAGES - 1, -24);
   homeBtn = navBtn(&homeIcon, LV_SYMBOL_HOME, 0, -24 - 64 - 12);
+
+  // red dot on the Settings button while a newer firmware version is available
+  lv_obj_add_flag(setBtn, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+  updDot = lv_obj_create(setBtn);
+  lv_obj_remove_style_all(updDot);
+  lv_obj_set_size(updDot, 14, 14);
+  lv_obj_set_style_radius(updDot, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_bg_color(updDot, lv_color_hex(0xff3b30), 0);
+  lv_obj_set_style_bg_opa(updDot, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_color(updDot, C_BG, 0);
+  lv_obj_set_style_border_width(updDot, 2, 0);
+  lv_obj_align(updDot, LV_ALIGN_TOP_RIGHT, 6, -6);
+  lv_obj_clear_flag(updDot, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_flag(updDot, LV_OBJ_FLAG_HIDDEN);
 
   // only shown while the screen isn't on Wi-Fi yet: how to reach the setup page
   hintLbl = label(bot, &lv_font_montserrat_18, C_MUTED);
@@ -610,6 +624,12 @@ void update() {
   }
   lv_obj_set_style_text_color(homeIcon, page == 0 ? C_INK : C_MUTED, 0);
   lv_obj_set_style_text_color(setIcon, page == PAGES - 1 ? C_INK : C_MUTED, 0);
+  {
+    const ota::State st = ota::status().state;
+    const bool show = ota::updateAvailable() && st != ota::State::Downloading && st != ota::State::Writing && st != ota::State::Done;
+    if (show) lv_obj_clear_flag(updDot, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(updDot, LV_OBJ_FLAG_HIDDEN);
+  }
   lv_label_set_text(iAddr, addr.length() ? addr.c_str() : "-");
   lv_label_set_text(iWifi, net::connected() ? net::ssidInUse().c_str() : net::apMode() ? "not connected - setup hotspot is on" : "connecting...");
   const Settings s = net::settings();
