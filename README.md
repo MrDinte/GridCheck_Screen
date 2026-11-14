@@ -68,6 +68,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.6.1**: fixes "can't connect" when checking for updates (secure connections now use the board's PSRAM instead of its small internal memory, which the screen buffers fill); clearer connection errors. Also helps the solar forecast download.
 - **0.6.0**: time-of-use prices: named periods (Off-peak, Shoulder, Peak, Free...) with times, days and prices; the screen shows the price now and when it changes, and says when power is free or at its dearest. Calmer moving dots. Installs over Wi-Fi from 0.5.0.
 - **0.5.0**: signed updates over Wi-Fi (from this site or a file), with automatic roll-back. Needs one USB install; history starts afresh because the flash layout changed (settings are kept).
 - **0.4.0**: three colour palettes and screen dimming.

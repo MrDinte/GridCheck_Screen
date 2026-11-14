@@ -4,6 +4,7 @@
 
 #include "compat.h"
 #include "esp_crt_bundle.h"
+#include "esp_heap_caps.h"
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
@@ -151,10 +152,22 @@ static std::string updateUrl() {
   return u.empty() ? DEFAULT_URL : u;
 }
 
+static esp_err_t lastOpenErr = ESP_OK;
+
+/** Why a connection failed, for the screen and the phone page. */
+static std::string connectProblem() {
+  char b[140];
+  snprintf(b, sizeof b, "%s; %u KB memory free, largest block %u KB", esp_err_to_name(lastOpenErr),
+           (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+           (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) / 1024));
+  return b;
+}
+
 /** Open an HTTPS GET, following a few redirects. Returns the status code (or -1). */
 static int openGet(esp_http_client_handle_t c) {
   for (int i = 0; i < 4; i++) {
-    if (esp_http_client_open(c, 0) != ESP_OK) return -1;
+    lastOpenErr = esp_http_client_open(c, 0);
+    if (lastOpenErr != ESP_OK) return -1;
     esp_http_client_fetch_headers(c);
     const int code = esp_http_client_get_status_code(c);
     if (code != 301 && code != 302 && code != 303 && code != 307 && code != 308) return code;
@@ -198,7 +211,7 @@ static bool fetchManifest(std::string& version, std::string& url, std::string& e
     ok = !version.empty() && !url.empty();
     if (!ok) err = "the update file doesn't look right";
   } else if (code < 0) {
-    err = "can't reach the update address (no internet?)";
+    err = "can't connect to the update site (" + connectProblem() + ")";
   } else {
     err = "update address answered " + std::to_string(code);
   }
@@ -265,7 +278,7 @@ static bool download(const std::string& url, std::string& err) {
   const int code = openGet(c);
   const int64_t len = esp_http_client_get_content_length(c);
   if (code != 200) {
-    err = code < 0 ? "can't reach the update" : "update download answered " + std::to_string(code);
+    err = code < 0 ? "can't connect to the update site (" + connectProblem() + ")" : "update download answered " + std::to_string(code);
   } else if (len <= 0) {
     err = "the update server didn't say how big the file is";
   } else if (writeBegin((size_t)len, err)) {
