@@ -40,14 +40,20 @@ void liveSet(const Live& v) {
 // ---- inverter task -----------------------------------------------------------
 // Runs on its own so a slow or unreachable inverter never freezes the screen.
 static void inverterTask(void*) {
-  SigenergyReader reader;
+  InverterReader* reader = nullptr;
+  uint8_t readerBrand = 255;
   uint32_t seenVersion = 0, failures = 0;
   Live cur;
   for (;;) {
     const Settings s = net::settings();
     if (net::settingsVersion() != seenVersion) {
       seenVersion = net::settingsVersion();
-      reader.configure(s.host, s.port, s.plantId);
+      if (!reader || readerBrand != s.brand) {  // inverter brand changed
+        delete reader;
+        reader = makeReader(s.brand);
+        readerBrand = s.brand;
+      }
+      reader->configure(s.host, s.port, s.plantId);
       cur = Live();
       failures = 0;
       liveSet(cur);
@@ -63,7 +69,7 @@ static void inverterTask(void*) {
       vTaskDelay(pdMS_TO_TICKS(1000));
       continue;
     }
-    if (reader.poll(cur)) {
+    if (reader->poll(cur)) {
       data::addReading(cur);
       if (failures) ESP_LOGI(TAG, "inverter: reading OK");
       failures = 0;

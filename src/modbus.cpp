@@ -77,10 +77,14 @@ bool ModbusTcp::readExactly(uint8_t* buf, size_t n) {
   return true;
 }
 
-MbResult ModbusTcp::readInput(uint8_t unit, uint16_t addr, uint16_t count, uint16_t* out, std::string& err) {
+MbResult ModbusTcp::read(uint8_t func, uint8_t unit, uint16_t addr, uint16_t count, uint16_t* out, std::string& err) {
+  if (count == 0 || count > 125) {
+    err = "bad register count";
+    return MbResult::Refused;
+  }
   if (_sock < 0 && !connectNow(err)) return MbResult::NoConnect;
   _tid++;
-  const uint8_t req[12] = {(uint8_t)(_tid >> 8), (uint8_t)_tid, 0, 0, 0, 6, unit, 0x04,
+  const uint8_t req[12] = {(uint8_t)(_tid >> 8), (uint8_t)_tid, 0, 0, 0, 6, unit, func,
                            (uint8_t)(addr >> 8), (uint8_t)addr, (uint8_t)(count >> 8), (uint8_t)count};
   uint8_t head[9];
   if (send(_sock, req, sizeof req, 0) != (int)sizeof req || !readExactly(head, 9)) {

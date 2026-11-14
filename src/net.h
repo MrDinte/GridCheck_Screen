@@ -46,7 +46,8 @@ struct Settings {
   std::string ssid, pass;  // home Wi-Fi
   std::string host;        // inverter IP
   uint16_t port = 502;
-  uint8_t plantId = 247;
+  uint8_t brand = 0;       // see inverters.h (0 = Sigenergy)
+  uint8_t plantId = 247;   // Modbus unit id (Sigenergy calls it the plant id)
   bool demo = false;       // show simulated data instead of the inverter
   std::string tz = "AEST-10AEDT,M10.1.0,M4.1.0/3";  // POSIX time zone (default Sydney/Melbourne)
   uint8_t brightness = 80;

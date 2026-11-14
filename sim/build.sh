@@ -14,6 +14,7 @@ for f in ../src/fonts/*.c; do gcc $FLAGS -c "$f" -o build/$(basename "$f" .c).o;
 g++ -std=c++17 $FLAGS -c ../src/ui.cpp -o build/ui.o
 g++ -std=c++17 $FLAGS -c ../src/ui_pages.cpp -o build/ui_pages.o
 g++ -std=c++17 $FLAGS -c ../src/tariff.cpp -o build/tariff.o
+g++ -std=c++17 $FLAGS -c ../src/brands.cpp -o build/brands.o
 g++ -std=c++17 $FLAGS -c sim_main.cpp -o build/sim_main.o
 g++ build/*.o -o build/render -lm
 echo "built sim/build/render"

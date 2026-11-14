@@ -1,5 +1,6 @@
 #include "ui.h"
 
+#include "inverters.h"
 #include "ui_common.h"
 
 #include <strings.h>
@@ -614,7 +615,8 @@ void update() {
   lv_label_set_text(iWifi, net::connected() ? net::ssidInUse().c_str() : net::apMode() ? "not connected - setup hotspot is on" : "connecting...");
   const Settings s = net::settings();
   if (s.demo) lv_label_set_text(iInv, "Demo data (simulated)");
-  else if (s.host.length()) lv_label_set_text_fmt(iInv, "%s:%u  (plant %u)  %s", s.host.c_str(), s.port, s.plantId, l.ok ? "- connected" : "- not reading");
+  else if (s.host.length())
+    lv_label_set_text_fmt(iInv, "%s  %s:%u  %s", BRANDS[s.brand < BRAND_COUNT ? s.brand : 0].name, s.host.c_str(), s.port, l.ok ? "- connected" : "- not reading");
   else lv_label_set_text(iInv, "not set up yet");
   lv_label_set_text(iErr, l.error[0] ? l.error : "none");
   lv_label_set_text_fmt(palLbl, "Colours: %s", PALETTE_NAMES[s.palette % 3]);

@@ -20,6 +20,7 @@
 #include "model.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "inverters.h"
 #include "ota.h"
 
 #ifndef EH_VERSION
@@ -81,6 +82,8 @@ static void load() {
   S.host = getStr(h, "host", "");
   nvs_get_u16(h, "port", &S.port);
   nvs_get_u8(h, "plant", &S.plantId);
+  nvs_get_u8(h, "brand", &S.brand);
+  if (S.brand >= BRAND_COUNT) S.brand = 0;
   uint8_t demo = 0;
   if (nvs_get_u8(h, "demo", &demo) == ESP_OK) S.demo = demo;
   S.tz = getStr(h, "tz", S.tz);
@@ -139,6 +142,7 @@ static void save() {
   nvs_set_str(h, "host", S.host.c_str());
   nvs_set_u16(h, "port", S.port);
   nvs_set_u8(h, "plant", S.plantId);
+  nvs_set_u8(h, "brand", S.brand);
   nvs_set_u8(h, "demo", S.demo ? 1 : 0);
   nvs_set_str(h, "tz", S.tz.c_str());
   nvs_set_u8(h, "bright", S.brightness);
@@ -253,6 +257,10 @@ static const char* TZS[][2] = {
 };
 
 static const char* OTA_JS = R"JS(
+(()=>{const s=document.getElementById('brand');if(!s||typeof BRANDS==='undefined')return;
+s.onchange=()=>{const b=BRANDS[s.value];document.getElementById('port').value=b[0];document.getElementById('plant').value=b[1];
+document.getElementById('unitbox').hidden=!b[2];document.getElementById('unitlbl').textContent=b[2]||'Unit id';
+document.getElementById('brandhelp').textContent=b[3];};})();
 (()=>{const b=document.getElementById('restart'),m=document.getElementById('rmsg');if(!b)return;
 b.onclick=async()=>{if(!confirm('Restart the screen? It takes about 20 seconds.'))return;const p=(document.getElementById('pin')||{}).value||'';
 try{const r=await fetch('/restart',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'pin='+encodeURIComponent(p)});
@@ -318,12 +326,24 @@ static std::string page(const std::string& message, bool good) {
   h += s.pass.empty() ? "Wi-Fi password" : "Saved - leave blank to keep";
   h += "'></div>";
 
-  h += "<div class=card><h2>Inverter</h2><label for=host>Inverter IP address</label><input id=host name=host inputmode=decimal autocomplete=off placeholder='192.168.1.50' value='" +
-       esc(s.host) + "'><div class=row><div><label for=port>Port</label><input id=port name=port inputmode=numeric value='" + std::to_string(s.port) +
-       "'></div><div><label for=plant>Plant unit id</label><input id=plant name=plant inputmode=numeric value='" + std::to_string(s.plantId) +
-       "'></div></div><div class=chk><input type=checkbox id=demo name=demo value=1" + (s.demo ? " checked" : "") +
-       "><label for=demo style='margin:0'>Show demo data instead</label></div>"
-       "<p class=help>Modbus TCP must be switched on for the inverter (your installer does this in the mySigen app).</p></div>";
+  {
+    const BrandInfo& b = BRANDS[s.brand < BRAND_COUNT ? s.brand : 0];
+    h += "<div class=card><h2>Inverter</h2><label for=brand>Brand</label><select id=brand name=brand>";
+    for (int i = 0; i < BRAND_COUNT; i++) h += "<option value=" + std::to_string(i) + (s.brand == i ? " selected" : "") + ">" + BRANDS[i].name + "</option>";
+    h += "</select><label for=host>IP address</label><input id=host name=host inputmode=decimal autocomplete=off placeholder='192.168.1.50' value='" + esc(s.host) +
+         "'><div class=row><div><label for=port>Port</label><input id=port name=port inputmode=numeric value='" + std::to_string(s.port) +
+         "'></div><div id=unitbox" + (b.unitName[0] ? "" : " hidden") + "><label for=plant id=unitlbl>" + (b.unitName[0] ? b.unitName : "Unit id") +
+         "</label><input id=plant name=plant inputmode=numeric value='" + std::to_string(s.plantId) +
+         "'></div></div><div class=chk><input type=checkbox id=demo name=demo value=1" + (s.demo ? " checked" : "") +
+         "><label for=demo style='margin:0'>Show demo data instead</label></div><p class=help id=brandhelp>" + b.howTo + "</p></div>";
+    // brand defaults for the page script: [port, unit, unit name, how-to]
+    h += "<script>const BRANDS=[";
+    for (int i = 0; i < BRAND_COUNT; i++) {
+      h += std::string(i ? "," : "") + "[" + std::to_string(BRANDS[i].port) + "," + std::to_string(BRANDS[i].unit) + ",\"" + BRANDS[i].unitName + "\",\"" +
+           BRANDS[i].howTo + "\"]";
+    }
+    h += "];</script>";
+  }
 
   h += "<div class=card><h2>Screen</h2><label for=tz>Time zone</label><select id=tz name=tz>";
   for (auto& z : TZS) h += std::string("<option value='") + z[0] + "'" + (s.tz == z[0] ? " selected" : "") + ">" + z[1] + "</option>";
@@ -574,7 +594,10 @@ static esp_err_t handleSave(httpd_req_t* req) {
       return sendPage(req, "400 Bad Request", "Latitude and longitude look wrong. Find them on a map, e.g. -33.87 and 151.21.", false);
     if (!parseNum("kwp", 0, 0.1f, 200, kwp) || kwp <= 0) return sendPage(req, "400 Bad Request", "Solar panel size should be in kW, e.g. 6.6.", false);
   }
-  if (plant < 0 || plant > 255) return sendPage(req, "400 Bad Request", "Plant unit id should be 0-255 (Sigenergy uses 247).", false);
+  const long brand = strtol(formField(body, "brand").c_str(), nullptr, 10);
+  if (brand < 0 || brand >= BRAND_COUNT) return sendPage(req, "400 Bad Request", "Choose your inverter brand.", false);
+  if (plant < 0 || plant > 255)
+    return sendPage(req, "400 Bad Request", std::string("The unit id should be 0-255 (usually ") + std::to_string(BRANDS[brand].unit) + " for " + BRANDS[brand].name + ").", false);
   if (!newPin.empty() && newPin != "0000") {
     bool digits = newPin.size() >= 4 && newPin.size() <= 8;
     for (char c : newPin) digits = digits && isdigit((unsigned char)c);
@@ -599,6 +622,7 @@ static esp_err_t handleSave(httpd_req_t* req) {
     S.host = host;
     S.port = (uint16_t)port;
     S.plantId = (uint8_t)plant;
+    S.brand = (uint8_t)brand;
     S.demo = hasField(body, "demo");
     const std::string tz = formField(body, "tz");
     if (!tz.empty()) S.tz = tz;
