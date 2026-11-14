@@ -68,16 +68,14 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
-- **0.6.9**: test release for updating over Wi-Fi and the update dot (no other changes).
-- **0.6.8**: a red dot on the Settings button when a newer version is available.
-- **0.6.7**: a new version now confirms itself after 20 seconds (was 60), and if one ever fails to start and the screen goes back to the previous version, the screen and phone page say so.
-- **0.6.6**: **Restart** button on the Settings & info page (tap twice) and **Restart screen** on the phone page, for wall-mounted screens. Reset all settings is now a separate, smaller hold-5-seconds button.
-- **0.6.5**: light and dark themes: **Theme** button on the Settings & info page and on the phone page (Dark, Light, or Auto: light by day, dark during the night hours).
-- **0.6.4**: fixes online updates sitting at 0% for ever: the download now runs in the update checker (which already has its memory) instead of a new background task that could fail to start for lack of internal RAM.
-- **0.6.3**: updates show progress straight away (the flash is erased while downloading, not all first) and say which step they're on.
-- **0.6.2**: Home and Settings buttons on every page, and tap a page dot to jump to that page.
-- **0.6.1**: fixes "can't connect" when checking for updates (secure connections now use the board's PSRAM instead of its small internal memory, which the screen buffers fill); clearer connection errors. Also helps the solar forecast download.
-- **0.6.0**: time-of-use prices: named periods (Off-peak, Shoulder, Peak, Free...) with times, days and prices; the screen shows the price now and when it changes, and says when power is free or at its dearest. Calmer moving dots. Installs over Wi-Fi from 0.5.0.
+- **0.6**: everything since the first Wi-Fi update release:
+  - **Time-of-use prices**: named periods (Off-peak, Shoulder, Peak, Free...) with times, days and prices. The screen shows the price now and when it changes, and says when power is free or at its dearest.
+  - **Home and Settings buttons** on every page, and tap a page dot to jump to that page.
+  - **Light and dark themes** (Dark, Light, or Auto by time of day), from the screen or the phone page.
+  - **Restart** button on the screen (tap twice) and on the phone page. Reset all settings is a separate hold-5-seconds button.
+  - **Red dot on the Settings button** when a newer version is available.
+  - **Reliable updates over Wi-Fi**: secure connections use the board's PSRAM, progress shows straight away with the current step, a new version confirms itself after 20 seconds, and a roll-back to the previous version is reported on screen.
+  - Calmer moving dots on the Now page.
 - **0.5.0**: signed updates over Wi-Fi (from this site or a file), with automatic roll-back. Needs one USB install; history starts afresh because the flash layout changed (settings are kept).
 - **0.4.0**: three colour palettes and screen dimming.
 - **0.3.0**: all eight pages, prices, forecast, history storage, and the GridCheck look.
