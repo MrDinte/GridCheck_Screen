@@ -169,7 +169,8 @@ static void buildBars(lv_obj_t* scr) {
     lv_obj_set_size(dots[i], 18, 5);
     lv_obj_set_style_radius(dots[i], 3, 0);
     lv_obj_set_style_bg_opa(dots[i], LV_OPA_COVER, 0);
-    lv_obj_align(dots[i], LV_ALIGN_CENTER, (i - (PAGES - 1) / 2.0f) * 24, -4);
+    // next to the Home/Settings buttons, so the status message has the left half of the bar
+    lv_obj_align(dots[i], LV_ALIGN_RIGHT_MID, -(24 + 2 * 64 + 12 + 28) - (PAGES - 1 - i) * 24, -4);
     lv_obj_add_flag(dots[i], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_ext_click_area(dots[i], 18);
     lv_obj_add_event_cb(dots[i], [](lv_event_t* e) { showPage((int)(intptr_t)lv_event_get_user_data(e)); }, LV_EVENT_CLICKED,

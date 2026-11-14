@@ -26,6 +26,12 @@ From version **0.5.0** on, the screen updates itself over Wi-Fi. Install 0.5.0 o
 - The phone page can also install a firmware file you downloaded (the one ending in `-app.bin`).
 - Settings and history are kept. If a new version doesn't start properly, the screen goes back to the previous one by itself.
 
+![Update available: red dot on the Settings button and "tap to install"; then installing](docs/images/screen-7b-update.png)
+
+<img src="docs/images/phone-firmware.png" alt="Firmware card on the phone settings page" width="320">
+
+*Screen: a newer version is available (red dot on the Settings button, "tap to install" on the Firmware row), then installing over Wi-Fi. Phone: the Firmware card on the settings page.*
+
 ### Security
 
 - **Signed updates.** Every update must be signed with GridCheck's private key, which is not in this repository. The screen checks the signature against the public key built into its firmware (`src/signing_pub.h`) before it will switch over. A file that is unsigned, signed with another key, or changed by even one bit is refused. That holds even if someone gets into this GitHub account, or uploads a file from inside your network.
@@ -50,6 +56,16 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 7. **History**: the last 24 hours of power, or daily totals for 7 or 30 days.
 8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
 
+### Light and dark
+
+Choose **Dark**, **Light** or **Auto** (light by day, dark during the night hours) with the **Theme** button on the Settings & info page, or on the phone page.
+
+![Dark and light themes](docs/images/screen-7b-light-dark.png)
+
+### Colours
+
+Three colour sets, GridCheck, Classic and Ocean, each in dark and light.
+
 ![Colour palettes](docs/images/screen-7b-palettes.png)
 
 The **phone settings page** (served by the screen) covers:
@@ -68,6 +84,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.7.4**: the page dots sit next to the Home and Settings buttons, so longer status messages no longer run into them. New README screenshots.
 - **0.7.3**: checks for updates at start-up and twice a day; the red dot on the Settings button appears by itself when one is found. (0.7.2 briefly checked once a day.)
 - **0.6**: everything since the first Wi-Fi update release:
   - **Time-of-use prices**: named periods (Off-peak, Shoulder, Peak, Free...) with times, days and prices. The screen shows the price now and when it changes, and says when power is free or at its dearest.

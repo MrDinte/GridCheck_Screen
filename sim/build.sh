@@ -5,7 +5,8 @@ set -e
 cd "$(dirname "$0")"
 LV=../.pio/libdeps/waveshare_7b/lvgl
 mkdir -p build
-FLAGS="-O1 -DLV_CONF_INCLUDE_SIMPLE -I. -I$LV -I$LV/src -I../src"
+VER=$(sed -n 's/.*-DEH_VERSION=\\"\([^\\]*\)\\".*/\1/p' ../platformio.ini)
+FLAGS="-O1 -DLV_CONF_INCLUDE_SIMPLE -DEH_VERSION=\"$VER\" -I. -I$LV -I$LV/src -I../src"
 for f in $(find $LV/src -name '*.c'); do
   o=build/$(echo "$f" | md5sum | cut -c1-12).o
   [ -f "$o" ] || gcc $FLAGS -c "$f" -o "$o"

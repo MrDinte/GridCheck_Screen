@@ -94,6 +94,16 @@ void checkNow() {}
 bool installOnline(std::string&) { return true; }
 }
 
+// SIM_TIME=<epoch seconds> pins the clock for repeatable screenshots.
+extern "C" time_t time(time_t* t) {
+  static const char* fixed = getenv("SIM_TIME");
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  const time_t v = fixed ? (time_t)atoll(fixed) : ts.tv_sec;
+  if (t) *t = v;
+  return v;
+}
+
 static uint16_t fb[1024 * 600];
 static void flush(lv_disp_drv_t* d, const lv_area_t* a, lv_color_t* px) {
   for (int y = a->y1; y <= a->y2; y++)
@@ -118,6 +128,13 @@ int main(int argc, char** argv) {
     if (!strcmp(tou, "free")) { strcpy(S.tariff.p[0].name, "Free"); S.tariff.p[0].price = 0; }
     if (!strcmp(tou, "peak")) { strcpy(S.tariff.p[0].name, "Peak"); S.tariff.p[0].price = 60; S.tariff.p[1].price = 10; strcpy(S.tariff.p[1].name, "Off-peak"); }
     if (!strcmp(tou, "off")) { strcpy(S.tariff.p[0].name, "Off-peak"); S.tariff.p[0].price = 18.5f; }
+    if (!strcmp(tou, "plan")) {  // a typical plan: Off-peak, Free window, weekday Peak, Shoulder at other times
+      S.tariff = Tariff(); S.tariff.set = true; S.tariff.buy = 28; S.tariff.sell = 6; S.tariff.supply = 110; strcpy(S.tariff.baseName, "Shoulder");
+      auto P = [](TouPeriod& p, const char* n, int a, int b, int d, float c) { p.used = true; strcpy(p.name, n); p.start = a; p.end = b; p.days = d; p.price = c; };
+      P(S.tariff.p[0], "Off-peak", 22 * 60, 7 * 60, TOU_EVERY_DAY, 18);
+      P(S.tariff.p[1], "Free", 11 * 60, 14 * 60, TOU_EVERY_DAY, 0);
+      P(S.tariff.p[2], "Peak", 15 * 60, 21 * 60, TOU_WEEKDAYS, 52);
+    }
   }
   makeHistory(time(nullptr));
   const char* scene = argc > 1 ? argv[1] : "day";
