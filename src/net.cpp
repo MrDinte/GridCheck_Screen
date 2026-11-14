@@ -402,7 +402,7 @@ static std::string page(const std::string& message, bool good) {
        "<button type=button class=sec id=oupload>Install file</button>"
        "<label for=updurl style='margin-top:16px'>Update address (leave blank for the normal one)</label><input id=updurl name=updurl autocapitalize=off autocomplete=off placeholder='" +
        std::string(ota::DEFAULT_URL) + "' value='" + esc(s.updateUrl) +
-       "'><p class=help>The screen looks for new versions when it starts and once a day after that, but only installs one when you press Install (here or on the screen's Settings &amp; info page). "
+       "'><p class=help>The screen looks for new versions when it starts and twice a day after that, but only installs one when you press Install (here or on the screen's Settings &amp; info page). "
        "Only firmware signed by GridCheck is accepted. Your settings and history are kept. If a new version won't start, the screen goes back to the old one by itself.";
   if (!s.pinHash.empty()) h += " Fill in your current PIN below first.";
   h += "</p></div>";
