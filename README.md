@@ -39,7 +39,7 @@ From version **0.5.0** on, the screen updates itself over Wi-Fi. Install 0.5.0 o
 
 ![GridCheck pages](docs/images/screen-7b-pages.png)
 
-Swipe between eight pages:
+Swipe between eight pages, tap a page dot to jump to one, or use the **Home** and **Settings** buttons at the bottom right of every page:
 
 1. **Now**: solar, battery, grid and home power around a hub, with moving dots, the battery ring and a status line.
 2. **Today**: solar made, home used, % self-powered, grid in/out, battery in/out, and where your solar went.
@@ -68,6 +68,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.6.2**: Home and Settings buttons on every page, and tap a page dot to jump to that page.
 - **0.6.1**: fixes "can't connect" when checking for updates (secure connections now use the board's PSRAM instead of its small internal memory, which the screen buffers fill); clearer connection errors. Also helps the solar forecast download.
 - **0.6.0**: time-of-use prices: named periods (Off-peak, Shoulder, Peak, Free...) with times, days and prices; the screen shows the price now and when it changes, and says when power is free or at its dearest. Calmer moving dots. Installs over Wi-Fi from 0.5.0.
 - **0.5.0**: signed updates over Wi-Fi (from this site or a file), with automatic roll-back. Needs one USB install; history starts afresh because the flash layout changed (settings are kept).

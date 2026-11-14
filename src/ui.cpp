@@ -19,7 +19,7 @@ namespace ui {
 
 // ---- widgets ---------------------------------------------------------------
 static lv_obj_t *clockLbl, *dateLbl, *chipSolar, *chipAside;
-static lv_obj_t *statusPill, *statusDot, *statusLbl, *hintLbl;
+static lv_obj_t *statusPill, *statusDot, *statusLbl, *hintLbl, *homeBtn, *homeIcon, *setBtn, *setIcon;
 static constexpr int PAGES = 8;  // Now, Today, Solar, Money, Flow, Battery, History, Info
 static lv_obj_t *dots[PAGES];
 static lv_obj_t *tiles;
@@ -152,6 +152,7 @@ static void buildBars(lv_obj_t* scr) {
   lv_obj_set_style_bg_opa(statusDot, LV_OPA_COVER, 0);
   statusLbl = label(statusPill, &lv_font_montserrat_20, C_MUTED, "Starting...");
 
+  // page dots: tap one to jump to that page
   for (int i = 0; i < PAGES; i++) {
     dots[i] = lv_obj_create(bot);
     lv_obj_remove_style_all(dots[i]);
@@ -159,9 +160,33 @@ static void buildBars(lv_obj_t* scr) {
     lv_obj_set_style_radius(dots[i], 3, 0);
     lv_obj_set_style_bg_opa(dots[i], LV_OPA_COVER, 0);
     lv_obj_align(dots[i], LV_ALIGN_CENTER, (i - (PAGES - 1) / 2.0f) * 24, -4);
+    lv_obj_add_flag(dots[i], LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_ext_click_area(dots[i], 18);
+    lv_obj_add_event_cb(dots[i], [](lv_event_t* e) { showPage((int)(intptr_t)lv_event_get_user_data(e)); }, LV_EVENT_CLICKED,
+                        (void*)(intptr_t)i);
   }
+
+  // Home and Settings buttons, on every page
+  auto navBtn = [&](lv_obj_t** icon, const char* sym, int page, int x) {
+    lv_obj_t* b = lv_btn_create(bot);
+    lv_obj_set_size(b, 64, 46);
+    lv_obj_set_style_bg_color(b, C_TILE, 0);
+    lv_obj_set_style_bg_color(b, C_FAINT, LV_STATE_PRESSED);
+    lv_obj_set_style_radius(b, 23, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_ext_click_area(b, 8);
+    lv_obj_align(b, LV_ALIGN_RIGHT_MID, x, -4);
+    *icon = label(b, &lv_font_montserrat_22, C_MUTED, sym);
+    lv_obj_center(*icon);
+    lv_obj_add_event_cb(b, [](lv_event_t* e) { showPage((int)(intptr_t)lv_event_get_user_data(e)); }, LV_EVENT_CLICKED, (void*)(intptr_t)page);
+    return b;
+  };
+  setBtn = navBtn(&setIcon, LV_SYMBOL_SETTINGS, PAGES - 1, -24);
+  homeBtn = navBtn(&homeIcon, LV_SYMBOL_HOME, 0, -24 - 64 - 12);
+
+  // only shown while the screen isn't on Wi-Fi yet: how to reach the setup page
   hintLbl = label(bot, &lv_font_montserrat_18, C_MUTED);
-  lv_obj_align(hintLbl, LV_ALIGN_RIGHT_MID, -28, -4);
+  lv_obj_align(hintLbl, LV_ALIGN_RIGHT_MID, -24 - 2 * 64 - 12 - 18, -4);
 }
 
 // ---- now page: four sources around a hub with moving dots -------------------
@@ -541,7 +566,17 @@ void update() {
 
   // where to change settings
   const std::string addr = net::address();
-  lv_label_set_text(hintLbl, net::connected() ? ("Settings: " + addr).c_str() : addr.c_str());
+  // On Wi-Fi: the Settings button shows the phone address. Not yet: say how to reach setup,
+  // in place of the page dots.
+  const bool online = net::connected();
+  lv_label_set_text(hintLbl, online ? "" : addr.c_str());
+  lv_obj_align(hintLbl, LV_ALIGN_RIGHT_MID, -24 - 2 * 64 - 12 - 18, -4);
+  for (int i = 0; i < PAGES; i++) {
+    if (online) lv_obj_clear_flag(dots[i], LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(dots[i], LV_OBJ_FLAG_HIDDEN);
+  }
+  lv_obj_set_style_text_color(homeIcon, page == 0 ? C_INK : C_MUTED, 0);
+  lv_obj_set_style_text_color(setIcon, page == PAGES - 1 ? C_INK : C_MUTED, 0);
   lv_label_set_text(iAddr, addr.length() ? addr.c_str() : "-");
   lv_label_set_text(iWifi, net::connected() ? net::ssidInUse().c_str() : net::apMode() ? "not connected - setup hotspot is on" : "connecting...");
   const Settings s = net::settings();
