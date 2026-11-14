@@ -256,7 +256,7 @@ static void checkerTask(void*) {
       }
       runInstall(url);
     }
-    const bool due = checkRequested || (lastCheck && millis() - lastCheck > 12UL * 3600 * 1000);
+    const bool due = checkRequested || (lastCheck && millis() - lastCheck > 24UL * 3600 * 1000);
     if (due && !busy && net::connected()) {
       checkRequested = false;
       lastCheck = millis() | 1;

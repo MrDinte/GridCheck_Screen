@@ -19,7 +19,7 @@ Then join the **GridCheck-Setup** Wi-Fi from your phone to choose your home Wi-F
 
 From version **0.5.0** on, the screen updates itself over Wi-Fi. Install 0.5.0 or later over USB **once**; after that:
 
-- The screen checks this site twice a day for a newer version. It **never installs on its own**.
+- The screen checks this site when it starts and then once a day for a newer version (or any time you press **Check for updates**). A red dot on the Settings button shows when one is available. It **never installs on its own**.
 - To install, either:
   - tap **Firmware** on the screen's **Settings & info** page, then tap again to confirm; or
   - press **Install update** on the phone settings page (the address is shown at the bottom of the screen).
@@ -68,7 +68,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
-- **0.7.1**: test release for the update dot (no other changes).
+- **0.7.2**: checks for updates once a day (and at start-up) instead of twice a day.
 - **0.6**: everything since the first Wi-Fi update release:
   - **Time-of-use prices**: named periods (Off-peak, Shoulder, Peak, Free...) with times, days and prices. The screen shows the price now and when it changes, and says when power is free or at its dearest.
   - **Home and Settings buttons** on every page, and tap a page dot to jump to that page.
