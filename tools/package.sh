@@ -39,7 +39,9 @@ B=.pio/build/waveshare_7b
 OTADATA=$(find "$B" -name ota_data_initial.bin | head -1)
 [ -n "$OTADATA" ] || { echo "ota_data_initial.bin not found in $B"; exit 1; }
 mkdir -p "$OUT"
-rm -f "$OUT"/gridcheck-7b-*.bin
+# Keep earlier update files (-app.bin): GitHub Pages caches ota.json for a
+# few minutes, so a screen may still ask for the previous version's file.
+rm -f "$OUT"/gridcheck-7b-*-bootloader.bin "$OUT"/gridcheck-7b-*-partitions.bin "$OUT"/gridcheck-7b-*-otadata.bin
 P="$OUT/gridcheck-7b-$VERSION"
 cp "$B/bootloader.bin" "$P-bootloader.bin"
 cp "$B/partitions.bin" "$P-partitions.bin"
