@@ -6,6 +6,23 @@ the inverter over Modbus TCP on the home network and updates itself over Wi-Fi f
 repo's GitHub Pages site. The owner flashes the board, tests on real hardware and reports back;
 we can't run the board here, so check UI changes in the PC simulator (`sim/`) before publishing.
 
+## Before /clear or /compact: save the latest notes
+When the owner says they're about to `/clear` or `/compact` (or asks to "save notes"), first
+update **Current state** below: published version, what's being tested on the board, open
+requests and agreed next steps, anything parked. Keep it short, replace stale lines rather than
+appending, then commit and push. Only keep project facts here (this repo is public): no IP
+addresses, emails or keys.
+
+## Current state (updated 2026-11-15)
+- Published: **0.7.4** (page dots beside Home/Settings buttons, new README screenshots).
+  The USB install page and `ota.json` both serve 0.7.4.
+- Owner's board: on 0.7.x. Updating over Wi-Fi is confirmed working on the real board
+  (0.6.7 → 0.6.8); the red update dot is built and was being checked with 0.7.x test releases.
+- Offered, not yet agreed: use Sigenergy lifetime energy counters (30088 PV, 30094 load,
+  30200/30204 battery, 30216/30220 grid) for exact daily totals and "since installed" totals.
+  Modbus has no history log, so past days can't be backfilled.
+- Not wanted for now: microSD storage, other inverter brands, Amber/AEMO price alerts.
+
 ## Scope and preferences
 - **Sigenergy only for now.** Other brands (SolaX, Sungrow, Fronius, GoodWe, Victron) are parked
   on the `multi-inverter` branch with research notes in `docs/research/other-inverters.md`.
