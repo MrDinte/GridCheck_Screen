@@ -369,20 +369,31 @@ static void buildNow(lv_obj_t* page) {
 }
 
 // ---- power prices editor (opens from Settings & info) ------------------------
-// Grid supplier from a list, and each price with a number pad. Period names, times
-// and days are set on the phone page; here only the prices change.
+// Grid supplier from a list; Peak, Off-peak (and any other periods set on the phone) each with
+// an on/off switch, start and end times, days and a price; Shoulder covers all other times.
+// Prices are typed on a number pad, times picked on hour/minute wheels.
 enum { F_BASE = TOU_MAX, F_SELL, F_SUPPLY, F_COUNT };  // 0..TOU_MAX-1: the time-of-use periods
-static lv_obj_t *pPanel, *pSupplier, *pEditing, *pHint, *pValBtn[F_COUNT], *pValLbl[F_COUNT];
+enum { K_PRICE, K_START, K_END };
+static lv_obj_t *pPanel, *pSupplier, *pEditing, *pHint, *pPad, *pTimeBox, *pHour, *pMin, *pTimeNote, *pBaseName, *pBaseSub, *pSelObj;
+static lv_obj_t *pValBtn[F_COUNT], *pValLbl[F_COUNT];
+static lv_obj_t *pSwitch[TOU_MAX], *pStart[TOU_MAX], *pEnd[TOU_MAX], *pDays[TOU_MAX];
 static char pText[F_COUNT][16];
-static int pSel = -1;
+static int pSel = -1, pKind = K_PRICE;
 static bool pFresh = true;
 static Tariff pDraft;
+static const char* const DAY_NAMES[3] = {"Every day", "Weekdays", "Weekends"};
 
 static const char* priceUnit(int f) { return f == F_SUPPLY ? "c/day" : "c/kWh"; }
 
+static bool anyPeriodOn() {
+  for (int i = 0; i < TOU_MAX; i++)
+    if (pSwitch[i] && lv_obj_has_state(pSwitch[i], LV_STATE_CHECKED)) return true;
+  return false;
+}
+
 static const char* priceFieldName(int f) {
   if (f < TOU_MAX) return pDraft.p[f].name[0] ? pDraft.p[f].name : "Period";
-  if (f == F_BASE) return !pDraft.hasPeriods() ? "Grid price" : pDraft.baseName[0] ? pDraft.baseName : "Standard";
+  if (f == F_BASE) return !anyPeriodOn() ? "Grid price" : pDraft.baseName[0] ? pDraft.baseName : "Shoulder";
   return f == F_SELL ? "Feed-in" : "Supply charge";
 }
 
@@ -390,18 +401,66 @@ static void showPriceValue(int f) {
   lv_label_set_text_fmt(pValLbl[f], "%s  #%s %s#", pText[f][0] ? pText[f] : "0", hx(C_MUTED), priceUnit(f));
 }
 
+static void showTimes(int i) {
+  const TouPeriod& p = pDraft.p[i];
+  lv_label_set_text_fmt(lv_obj_get_child(pStart[i], 0), "%02u:%02u", p.start / 60, p.start % 60);
+  lv_label_set_text_fmt(lv_obj_get_child(pEnd[i], 0), "%02u:%02u", p.end / 60, p.end % 60);
+  lv_label_set_text(lv_obj_get_child(pDays[i], 0), DAY_NAMES[p.days % 3]);
+}
+
+static void showBaseName() {
+  lv_label_set_text(pBaseName, priceFieldName(F_BASE));
+  lv_label_set_text(pBaseSub, anyPeriodOn() ? "all other times" : "all day");
+}
+
+/** "10:00 pm", "midnight", "noon": the time in plain words under the wheels. */
+static void showTimeNote(uint16_t m) {
+  if (m == 0) lv_label_set_text(pTimeNote, "midnight");
+  else if (m == 720) lv_label_set_text(pTimeNote, "midday");
+  else lv_label_set_text_fmt(pTimeNote, "%d:%02d %s", (m / 60 + 11) % 12 + 1, m % 60, m < 720 ? "am" : "pm");
+}
+
+static void highlight(lv_obj_t* o) {
+  if (pSelObj) lv_obj_set_style_border_width(pSelObj, 0, 0);
+  pSelObj = o;
+  lv_obj_set_style_border_width(o, 3, 0);
+}
+
 static void selectPrice(int f) {
-  if (pSel >= 0) lv_obj_set_style_border_width(pValBtn[pSel], 0, 0);
   pSel = f;
+  pKind = K_PRICE;
   pFresh = true;  // the first key typed replaces the old value
-  lv_obj_set_style_border_width(pValBtn[f], 3, 0);
+  highlight(pValBtn[f]);
   lv_label_set_text_fmt(pEditing, "%s  (%s)", priceFieldName(f), priceUnit(f));
+  lv_obj_clear_flag(pPad, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(pTimeBox, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void selectTime(int i, int kind) {
+  pSel = i;
+  pKind = kind;
+  highlight(kind == K_START ? pStart[i] : pEnd[i]);
+  lv_label_set_text_fmt(pEditing, "%s %s at", priceFieldName(i), kind == K_START ? "starts" : "ends");
+  const uint16_t m = kind == K_START ? pDraft.p[i].start : pDraft.p[i].end;
+  lv_roller_set_selected(pHour, m / 60, LV_ANIM_OFF);
+  lv_roller_set_selected(pMin, (m % 60) / 5, LV_ANIM_OFF);
+  showTimeNote(m);
+  lv_obj_add_flag(pPad, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_clear_flag(pTimeBox, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void wheelEvent(lv_event_t*) {
+  if (pSel < 0 || pSel >= TOU_MAX || pKind == K_PRICE) return;
+  const uint16_t m = (uint16_t)(lv_roller_get_selected(pHour) * 60 + lv_roller_get_selected(pMin) * 5);
+  (pKind == K_START ? pDraft.p[pSel].start : pDraft.p[pSel].end) = m;
+  showTimes(pSel);
+  showTimeNote(m);
 }
 
 static void keyEvent(lv_event_t* e) {
   lv_obj_t* m = lv_event_get_target(e);
   const uint16_t b = lv_btnmatrix_get_selected_btn(m);
-  if (b == LV_BTNMATRIX_BTN_NONE || pSel < 0) return;
+  if (b == LV_BTNMATRIX_BTN_NONE || pSel < 0 || pKind != K_PRICE) return;
   const char* k = lv_btnmatrix_get_btn_text(m, b);
   char* t = pText[pSel];
   if (pFresh) t[0] = 0, pFresh = false;
@@ -419,9 +478,18 @@ static void keyEvent(lv_event_t* e) {
   showPriceValue(pSel);
 }
 
+static void setPeriodOn(int i, bool on) {
+  for (lv_obj_t* o : {pStart[i], pEnd[i], pDays[i], pValBtn[i]}) {
+    lv_obj_set_style_opa(o, on ? LV_OPA_COVER : LV_OPA_40, 0);
+    if (on) lv_obj_clear_state(o, LV_STATE_DISABLED);
+    else lv_obj_add_state(o, LV_STATE_DISABLED);
+  }
+}
+
 static void closePrices() {
   if (pPanel) lv_obj_del(pPanel);
   pPanel = nullptr;
+  pSelObj = nullptr;
   pSel = -1;
 }
 
@@ -443,6 +511,15 @@ static void savePrices(lv_event_t*) {
     else if (f == F_SELL) t.sell = v;
     else t.supply = v;
   }
+  for (int i = 0; i < TOU_MAX; i++)
+    if (pSwitch[i]) t.p[i].used = lv_obj_has_state(pSwitch[i], LV_STATE_CHECKED);
+  if (t.hasPeriods() && !t.baseName[0]) snprintf(t.baseName, sizeof t.baseName, "Shoulder");
+  const std::string problem = tariffProblem(t);
+  if (!problem.empty()) {
+    lv_label_set_text(pHint, problem.c_str());
+    lv_obj_set_style_text_color(pHint, C_WARN, 0);
+    return;
+  }
   std::string supplier;
   if (lv_dropdown_get_selected(pSupplier) > 0) {
     char b[48];
@@ -453,11 +530,55 @@ static void savePrices(lv_event_t*) {
   net::setPrices(t, supplier);
 }
 
+/** Index of a period called `name` (any case, ignoring spaces and dashes), or -1. */
+static int findPeriod(const Tariff& t, const char* name) {
+  auto squash = [](const char* s, char* out) {
+    int n = 0;
+    for (; *s && n < 15; s++)
+      if (*s != ' ' && *s != '-') out[n++] = (char)tolower((unsigned char)*s);
+    out[n] = 0;
+  };
+  char want[16], have[16];
+  squash(name, want);
+  for (int i = 0; i < TOU_MAX; i++) {
+    if (!t.p[i].name[0]) continue;
+    squash(t.p[i].name, have);
+    if (!strcmp(want, have)) return i;
+  }
+  return -1;
+}
+
+/** Make sure Peak and Off-peak have a slot (switched off with typical times if they weren't set). */
+static void addStandardPeriods(Tariff& t) {
+  struct Std { const char* name; uint16_t start, end; uint8_t days; float price; };
+  static const Std std_[2] = {{"Peak", 15 * 60, 21 * 60, TOU_WEEKDAYS, 50}, {"Off-peak", 22 * 60, 7 * 60, TOU_EVERY_DAY, 20}};
+  for (const Std& s : std_) {
+    int i = findPeriod(t, s.name);
+    // kept from an earlier save while switched off: keep its times
+    if (i >= 0 && (t.p[i].used || t.p[i].start != t.p[i].end)) continue;
+    // otherwise use an empty slot (or one left over from a removed period)
+    for (int pass = 0; i < 0 && pass < 2; pass++)
+      for (int k = 0; k < TOU_MAX && i < 0; k++)
+        if (!t.p[k].used && (pass ? findPeriod(t, "Peak") != k && findPeriod(t, "Off-peak") != k : !t.p[k].name[0])) i = k;
+    if (i >= 0) {
+      TouPeriod& p = t.p[i];
+      p = TouPeriod();
+      snprintf(p.name, sizeof p.name, "%s", s.name);
+      p.start = s.start;
+      p.end = s.end;
+      p.days = s.days;
+      p.price = s.price;
+    }
+  }
+}
+
 void openPrices() {
   closePrices();
   const Settings s = net::settings();
   pDraft = s.tariff;
+  addStandardPeriods(pDraft);
   for (auto*& o : pValBtn) o = nullptr;
+  for (auto*& o : pSwitch) o = nullptr;
 
   pPanel = plain(lv_layer_top());
   lv_obj_set_size(pPanel, W, board::SCREEN_H);
@@ -491,25 +612,50 @@ void openPrices() {
   lv_obj_set_scrollbar_mode(col, LV_SCROLLBAR_MODE_AUTO);
   lv_obj_set_style_pad_right(col, 14, 0);
 
-  auto row = [&](const char* name, const char* sub) {
+  auto row = [&](int h) {
     lv_obj_t* r = plain(col);
-    lv_obj_set_size(r, LV_PCT(100), 64);
+    lv_obj_set_size(r, LV_PCT(100), h);
     lv_obj_set_style_border_side(r, LV_BORDER_SIDE_BOTTOM, 0);
     lv_obj_set_style_border_color(r, C_FAINT, 0);
     lv_obj_set_style_border_width(r, 1, 0);
-    lv_obj_t* n = label(r, &lv_font_montserrat_20, C_INK, name);
-    if (sub && sub[0]) {
-      lv_obj_align(n, LV_ALIGN_LEFT_MID, 0, -11);
-      lv_obj_t* sl = label(r, &lv_font_montserrat_16, C_MUTED, sub);
-      lv_obj_align(sl, LV_ALIGN_LEFT_MID, 0, 13);
-    } else {
-      lv_obj_align(n, LV_ALIGN_LEFT_MID, 0, 0);
-    }
     return r;
+  };
+  auto nameSub = [&](lv_obj_t* r, const char* name, const char* sub, lv_obj_t** nameOut = nullptr, lv_obj_t** subOut = nullptr) {
+    lv_obj_t* n = label(r, &lv_font_montserrat_20, C_INK, name);
+    lv_obj_align(n, LV_ALIGN_LEFT_MID, 0, -11);
+    lv_obj_t* sl = label(r, &lv_font_montserrat_16, C_MUTED, sub);
+    lv_obj_align(sl, LV_ALIGN_LEFT_MID, 0, 13);
+    if (nameOut) *nameOut = n;
+    if (subOut) *subOut = sl;
+  };
+  auto pill = [&](lv_obj_t* parent, int w, int h, const lv_font_t* font) {
+    lv_obj_t* b = lv_btn_create(parent);
+    lv_obj_set_size(b, w, h);
+    lv_obj_set_style_bg_color(b, C_TILE, 0);
+    lv_obj_set_style_radius(b, h / 2, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_set_style_border_color(b, C_PINK, 0);
+    lv_obj_set_style_border_width(b, 0, 0);
+    lv_obj_set_style_pad_all(b, 0, 0);
+    lv_obj_t* l = label(b, font, C_INK);
+    lv_label_set_recolor(l, true);
+    lv_obj_center(l);
+    return b;
+  };
+  auto priceBtn = [&](lv_obj_t* r, int f, float v) {
+    snprintf(pText[f], sizeof pText[f], "%g", roundf(v * 100) / 100);
+    pValBtn[f] = pill(r, 180, 46, &lv_font_montserrat_22);
+    lv_obj_align(pValBtn[f], LV_ALIGN_RIGHT_MID, 0, 0);
+    pValLbl[f] = lv_obj_get_child(pValBtn[f], 0);
+    showPriceValue(f);
+    lv_obj_add_event_cb(pValBtn[f], [](lv_event_t* e) { selectPrice((int)(intptr_t)lv_event_get_user_data(e)); }, LV_EVENT_CLICKED,
+                        (void*)(intptr_t)f);
   };
 
   // grid supplier
-  lv_obj_t* r = row("Grid supplier", "");
+  lv_obj_t* r = row(64);
+  lv_obj_t* sn = label(r, &lv_font_montserrat_20, C_INK, "Grid supplier");
+  lv_obj_align(sn, LV_ALIGN_LEFT_MID, 0, 0);
   pSupplier = lv_dropdown_create(r);
   std::string opts = "Not set";
   int selIdx = 0;
@@ -543,70 +689,141 @@ void openPrices() {
   lv_obj_set_style_bg_color(list, C_FAINT, LV_PART_SELECTED | LV_STATE_PRESSED);
   lv_obj_set_style_text_color(list, C_BG, LV_PART_SELECTED | LV_STATE_CHECKED);
 
-  // one row per price
-  auto priceRow = [&](int f, float v, const char* sub) {
-    lv_obj_t* r = row(priceFieldName(f), sub);
-    snprintf(pText[f], sizeof pText[f], "%g", roundf(v * 100) / 100);
-    lv_obj_t* b = lv_btn_create(r);
-    lv_obj_set_size(b, 200, 48);
-    lv_obj_align(b, LV_ALIGN_RIGHT_MID, 0, 0);
-    lv_obj_set_style_bg_color(b, C_TILE, 0);
-    lv_obj_set_style_radius(b, 24, 0);
-    lv_obj_set_style_shadow_width(b, 0, 0);
-    lv_obj_set_style_border_color(b, C_PINK, 0);
-    lv_obj_set_style_border_width(b, 0, 0);
-    pValBtn[f] = b;
-    pValLbl[f] = label(b, &lv_font_montserrat_22, C_INK);
-    lv_label_set_recolor(pValLbl[f], true);
-    lv_obj_center(pValLbl[f]);
-    showPriceValue(f);
-    lv_obj_add_event_cb(b, [](lv_event_t* e) { selectPrice((int)(intptr_t)lv_event_get_user_data(e)); }, LV_EVENT_CLICKED,
-                        (void*)(intptr_t)f);
-  };
-  static const char* DAYS[] = {"every day", "weekdays", "weekends"};
-  for (int i = 0; i < TOU_MAX; i++) {
-    const TouPeriod& p = pDraft.p[i];
-    if (!p.used) continue;
-    char sub[40];
-    snprintf(sub, sizeof sub, "%02u:%02u to %02u:%02u, %s", p.start / 60, p.start % 60, p.end / 60, p.end % 60, DAYS[p.days % 3]);
-    priceRow(i, p.price, sub);
+  // time-of-use periods: Peak, then Off-peak, then any others set on the phone
+  int order[TOU_MAX], n = 0;
+  for (const char* nm : {"Peak", "Off-peak"}) {
+    const int i = findPeriod(pDraft, nm);
+    if (i >= 0) order[n++] = i;
   }
-  priceRow(F_BASE, pDraft.buy, pDraft.hasPeriods() ? "all other times" : "all day");
-  priceRow(F_SELL, pDraft.sell, "paid for power you send to the grid");
-  priceRow(F_SUPPLY, pDraft.supply, "daily charge on your bill");
+  for (int i = 0; i < TOU_MAX; i++) {
+    bool seen = false;
+    for (int k = 0; k < n; k++) seen = seen || order[k] == i;
+    if (!seen && pDraft.p[i].used) order[n++] = i;
+  }
+  for (int k = 0; k < n; k++) {
+    const int i = order[k];
+    lv_obj_t* r = row(92);
+    pSwitch[i] = lv_switch_create(r);
+    lv_obj_set_size(pSwitch[i], 54, 30);
+    lv_obj_set_pos(pSwitch[i], 0, 10);
+    lv_obj_set_style_bg_color(pSwitch[i], C_FAINT, 0);
+    lv_obj_set_style_bg_color(pSwitch[i], C_PINK, LV_PART_INDICATOR | LV_STATE_CHECKED);
+    // light knob on either theme: white on dark screens, the (white) background on light ones
+    lv_obj_set_style_bg_color(pSwitch[i], lv_color_brightness(C_BG) > 128 ? C_BG : C_INK, LV_PART_KNOB);
+    lv_obj_set_ext_click_area(pSwitch[i], 10);
+    if (pDraft.p[i].used) lv_obj_add_state(pSwitch[i], LV_STATE_CHECKED);
+    lv_obj_add_event_cb(pSwitch[i], [](lv_event_t* e) {
+      const int i = (int)(intptr_t)lv_event_get_user_data(e);
+      setPeriodOn(i, lv_obj_has_state(pSwitch[i], LV_STATE_CHECKED));
+      showBaseName();
+    }, LV_EVENT_VALUE_CHANGED, (void*)(intptr_t)i);
+    lv_obj_t* nm = label(r, &lv_font_montserrat_20, C_INK, pDraft.p[i].name);
+    lv_obj_set_pos(nm, 68, 13);
 
-  // right: number pad for the selected price
+    pStart[i] = pill(r, 86, 34, &lv_font_montserrat_18);
+    lv_obj_set_pos(pStart[i], 0, 50);
+    lv_obj_t* to = label(r, &lv_font_montserrat_16, C_MUTED, "to");
+    lv_obj_set_pos(to, 96, 58);
+    pEnd[i] = pill(r, 86, 34, &lv_font_montserrat_18);
+    lv_obj_set_pos(pEnd[i], 122, 50);
+    pDays[i] = pill(r, 128, 34, &lv_font_montserrat_18);
+    lv_obj_set_pos(pDays[i], 220, 50);
+    lv_obj_add_event_cb(pStart[i], [](lv_event_t* e) { selectTime((int)(intptr_t)lv_event_get_user_data(e), K_START); },
+                        LV_EVENT_CLICKED, (void*)(intptr_t)i);
+    lv_obj_add_event_cb(pEnd[i], [](lv_event_t* e) { selectTime((int)(intptr_t)lv_event_get_user_data(e), K_END); },
+                        LV_EVENT_CLICKED, (void*)(intptr_t)i);
+    lv_obj_add_event_cb(pDays[i], [](lv_event_t* e) {
+      const int i = (int)(intptr_t)lv_event_get_user_data(e);
+      pDraft.p[i].days = (uint8_t)((pDraft.p[i].days + 1) % 3);
+      showTimes(i);
+    }, LV_EVENT_CLICKED, (void*)(intptr_t)i);
+    showTimes(i);
+    priceBtn(r, i, pDraft.p[i].price);
+    setPeriodOn(i, pDraft.p[i].used);
+  }
+
+  // Shoulder (or a single price when no periods are on), feed-in and supply
+  r = row(64);
+  nameSub(r, "", "", &pBaseName, &pBaseSub);
+  priceBtn(r, F_BASE, pDraft.buy);
+  showBaseName();
+  r = row(64);
+  nameSub(r, "Feed-in", "paid for power you send to the grid");
+  priceBtn(r, F_SELL, pDraft.sell);
+  r = row(64);
+  nameSub(r, "Supply charge", "daily charge on your bill");
+  priceBtn(r, F_SUPPLY, pDraft.supply);
+
+  // right: number pad for a price, or hour/minute wheels for a time
   const int kx = 660, kw = W - kx - 40;
   pEditing = label(pPanel, &lv_font_montserrat_20, C_MUTED, "");
   lv_obj_set_pos(pEditing, kx + 4, 96);
   static const char* KEYS[] = {"1", "2", "3", "\n", "4", "5", "6", "\n", "7", "8", "9", "\n", ".", "0", LV_SYMBOL_BACKSPACE, ""};
-  lv_obj_t* pad = lv_btnmatrix_create(pPanel);
-  lv_btnmatrix_set_map(pad, KEYS);
-  lv_obj_set_size(pad, kw, 340);
-  lv_obj_set_pos(pad, kx, 130);
-  lv_obj_set_style_bg_opa(pad, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(pad, 0, 0);
-  lv_obj_set_style_pad_all(pad, 0, 0);
-  lv_obj_set_style_pad_gap(pad, 10, 0);
-  lv_obj_set_style_bg_color(pad, C_TILE, LV_PART_ITEMS);
-  lv_obj_set_style_bg_opa(pad, LV_OPA_COVER, LV_PART_ITEMS);
-  lv_obj_set_style_bg_color(pad, C_FAINT, LV_PART_ITEMS | LV_STATE_PRESSED);
-  lv_obj_set_style_radius(pad, 18, LV_PART_ITEMS);
-  lv_obj_set_style_shadow_width(pad, 0, LV_PART_ITEMS);
-  lv_obj_set_style_border_width(pad, 0, LV_PART_ITEMS);
-  lv_obj_set_style_text_color(pad, C_INK, LV_PART_ITEMS);
-  lv_obj_set_style_text_font(pad, &lv_font_montserrat_28, LV_PART_ITEMS);
-  lv_obj_add_event_cb(pad, keyEvent, LV_EVENT_VALUE_CHANGED, nullptr);
+  pPad = lv_btnmatrix_create(pPanel);
+  lv_btnmatrix_set_map(pPad, KEYS);
+  lv_obj_set_size(pPad, kw, 340);
+  lv_obj_set_pos(pPad, kx, 130);
+  lv_obj_set_style_bg_opa(pPad, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(pPad, 0, 0);
+  lv_obj_set_style_pad_all(pPad, 0, 0);
+  lv_obj_set_style_pad_gap(pPad, 10, 0);
+  lv_obj_set_style_bg_color(pPad, C_TILE, LV_PART_ITEMS);
+  lv_obj_set_style_bg_opa(pPad, LV_OPA_COVER, LV_PART_ITEMS);
+  lv_obj_set_style_bg_color(pPad, C_FAINT, LV_PART_ITEMS | LV_STATE_PRESSED);
+  lv_obj_set_style_radius(pPad, 18, LV_PART_ITEMS);
+  lv_obj_set_style_shadow_width(pPad, 0, LV_PART_ITEMS);
+  lv_obj_set_style_border_width(pPad, 0, LV_PART_ITEMS);
+  lv_obj_set_style_text_color(pPad, C_INK, LV_PART_ITEMS);
+  lv_obj_set_style_text_font(pPad, &lv_font_montserrat_28, LV_PART_ITEMS);
+  lv_obj_add_event_cb(pPad, keyEvent, LV_EVENT_VALUE_CHANGED, nullptr);
+
+  pTimeBox = plain(pPanel);
+  lv_obj_set_size(pTimeBox, kw, 340);
+  lv_obj_set_pos(pTimeBox, kx, 130);
+  auto wheel = [&](const char* opts, int x) {
+    lv_obj_t* w = lv_roller_create(pTimeBox);
+    lv_roller_set_options(w, opts, LV_ROLLER_MODE_INFINITE);
+    lv_roller_set_visible_row_count(w, 5);
+    lv_obj_set_width(w, 120);
+    lv_obj_set_pos(w, x, 0);
+    lv_obj_set_style_bg_color(w, C_TILE, 0);
+    lv_obj_set_style_border_width(w, 0, 0);
+    lv_obj_set_style_radius(w, 18, 0);
+    lv_obj_set_style_text_color(w, C_MUTED, 0);
+    lv_obj_set_style_text_font(w, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_line_space(w, 22, 0);
+    lv_obj_set_style_bg_color(w, C_PINK, LV_PART_SELECTED);
+    lv_obj_set_style_text_color(w, C_BG, LV_PART_SELECTED);
+    lv_obj_set_style_text_font(w, &lv_font_montserrat_28, LV_PART_SELECTED);
+    lv_obj_add_event_cb(w, wheelEvent, LV_EVENT_VALUE_CHANGED, nullptr);
+    return w;
+  };
+  static std::string hours, mins;
+  if (hours.empty()) {
+    char b[4];
+    for (int h = 0; h < 24; h++) snprintf(b, sizeof b, "%02d", h), hours += (h ? "\n" : "") + std::string(b);
+    for (int m = 0; m < 60; m += 5) snprintf(b, sizeof b, "%02d", m), mins += (m ? "\n" : "") + std::string(b);
+  }
+  pHour = wheel(hours.c_str(), (kw - 2 * 120 - 30) / 2);
+  lv_obj_t* colon = label(pTimeBox, &lv_font_montserrat_32, C_INK, ":");
+  lv_obj_align_to(colon, pHour, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
+  pMin = wheel(mins.c_str(), (kw - 2 * 120 - 30) / 2 + 120 + 30);
+  pTimeNote = label(pTimeBox, &lv_font_montserrat_22, C_INK, "");
+  lv_obj_set_width(pTimeNote, kw);
+  lv_obj_set_style_text_align(pTimeNote, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align_to(pTimeNote, pHour, LV_ALIGN_OUT_BOTTOM_LEFT, -(kw - 2 * 120 - 30) / 2, 18);
+  lv_obj_add_flag(pTimeBox, LV_OBJ_FLAG_HIDDEN);
 
   pHint = label(pPanel, &lv_font_montserrat_16, C_MUTED,
-                "Prices in cents, including GST, as on your bill. Change period names and times on the phone page.");
+                "Prices in cents, including GST, as on your bill. Tap a time to change it, and the days to switch "
+                "between every day, weekdays and weekends.");
   lv_obj_set_width(pHint, kw);
   lv_label_set_long_mode(pHint, LV_LABEL_LONG_WRAP);
   lv_obj_set_pos(pHint, kx + 4, 486);
 
   int first = F_BASE;
-  for (int i = TOU_MAX - 1; i >= 0; i--)
-    if (pDraft.p[i].used) first = i;
+  for (int k = n - 1; k >= 0; k--)
+    if (pDraft.p[order[k]].used) first = order[k];
   selectPrice(first);
 }
 
@@ -688,6 +905,12 @@ static void buildInfo(lv_obj_t* page) {
   iInv = infoRow(col, "Inverter");
   iPrice = infoRow(col, "Power prices");
   lv_label_set_recolor(iPrice, true);
+  // room for Peak, Shoulder, Off-peak and feed-in; the caption also names the supplier
+  lv_obj_set_style_text_font(iPrice, &lv_font_montserrat_20, 0);
+  lv_obj_set_width(iPrice, 590);
+  lv_obj_t* priceCap = lv_obj_get_child(lv_obj_get_parent(iPrice), 0);
+  lv_obj_set_width(priceCap, 300);
+  lv_label_set_long_mode(priceCap, LV_LABEL_LONG_DOT);
   lv_obj_t* priceRow = lv_obj_get_parent(iPrice);
   lv_obj_add_flag(priceRow, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_set_style_bg_color(priceRow, C_TILE, LV_STATE_PRESSED);
@@ -896,19 +1119,33 @@ void update() {
   else if (s.host.length()) lv_label_set_text_fmt(iInv, "%s:%u  (plant %u)  %s", s.host.c_str(), s.port, s.plantId, l.ok ? "- connected" : "- not reading");
   else lv_label_set_text(iInv, "not set up yet");
   {
-    // supplier, then the range of import prices and the feed-in price
+    // Peak, Shoulder, Off-peak and feed-in first (as on most bills), then any other periods;
+    // the supplier goes in the caption
     const Tariff& tf = s.tariff;
-    float lo = tf.buy, hi = tf.buy;
-    for (const auto& p : tf.p)
-      if (p.used) lo = fminf(lo, p.price), hi = fmaxf(hi, p.price);
-    char a[12], b[12], c[12];
-    priceText(a, sizeof a, lo);
-    priceText(b, sizeof b, hi);
-    priceText(c, sizeof c, tf.sell);
-    const char* sup = s.supplier.length() ? s.supplier.c_str() : "Supplier not set";
+    char sum[200] = "", pr[12];
+    size_t k = 0;
+    auto add = [&](const char* name, float c) {
+      if (k > sizeof sum - 40) return;
+      priceText(pr, sizeof pr, c);
+      if (!strcasecmp(name, "Free") && c < 0.005f) k += snprintf(sum + k, sizeof sum - k, "%sFree", k ? "  " : "");
+      else k += snprintf(sum + k, sizeof sum - k, "%s%s %s", k ? "  " : "", name, pr);
+    };
+    int shown[TOU_MAX] = {0};
+    auto addNamed = [&](const char* name) {
+      for (int i = 0; i < TOU_MAX; i++)
+        if (tf.p[i].used && !shown[i] && !strcasecmp(tf.p[i].name, name)) shown[i] = 1, add(tf.p[i].name, tf.p[i].price);
+    };
+    addNamed("Peak");
+    add(tf.hasPeriods() ? periodName(tf, -1) : "Grid", tf.buy);
+    addNamed("Off-peak");
+    add("Feed-in", tf.sell);
+    for (int i = 0; i < TOU_MAX; i++)
+      if (tf.p[i].used && !shown[i]) add(tf.p[i].name, tf.p[i].price);
     if (!tf.set) lv_label_set_text_fmt(iPrice, "#%s Tap to enter your supplier and prices#", hx(C_PINK));
-    else if (hi - lo < 0.05f) lv_label_set_text_fmt(iPrice, "%s  -  %s, feed-in %s   #%s " LV_SYMBOL_EDIT "#", sup, a, c, hx(C_PINK));
-    else lv_label_set_text_fmt(iPrice, "%s  -  %s to %s, feed-in %s   #%s " LV_SYMBOL_EDIT "#", sup, a, b, c, hx(C_PINK));
+    else lv_label_set_text_fmt(iPrice, "%s  #%s " LV_SYMBOL_EDIT "#", sum, hx(C_PINK));
+    lv_obj_t* cap = lv_obj_get_child(lv_obj_get_parent(iPrice), 0);
+    if (s.supplier.length()) lv_label_set_text_fmt(cap, "Prices  -  %s", s.supplier.c_str());
+    else lv_label_set_text(cap, "Power prices");
   }
   lv_label_set_text(iErr, l.error[0] ? l.error : "none");
   lv_label_set_text_fmt(palLbl, "Colours: %s", PALETTE_NAMES[s.palette % 3]);

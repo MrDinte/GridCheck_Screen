@@ -2,6 +2,7 @@
 // No hardware code here, so the PC simulator and tests use it too.
 #include "net.h"
 
+#include <cstdio>
 #include <ctime>
 
 bool themeIsLight(const Settings& s) {
@@ -50,4 +51,28 @@ int minutesUntilChange(const Tariff& t, int m, int wday) {
     if (periodAt(t, mm, wd) != now) return k;
   }
   return 7 * 1440;
+}
+
+std::string tariffProblem(const Tariff& t) {
+  for (const auto& p : t.p)
+    if (p.used && p.start == p.end) return std::string(p.name) + ": the start and end times are the same.";
+  // periods must not overlap: check every minute of the week
+  for (int d = 0; d < 7; d++)
+    for (int m = 0; m < 1440; m++) {
+      int hit = -1;
+      for (int i = 0; i < TOU_MAX; i++) {
+        if (!t.p[i].used) continue;
+        Tariff one;
+        one.p[0] = t.p[i];
+        if (periodAt(one, m, d) != 0) continue;
+        if (hit >= 0) {
+          static const char* DAY[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+          char at[48];
+          snprintf(at, sizeof at, " overlap at %02d:%02d on %s.", m / 60, m % 60, DAY[d]);
+          return std::string(t.p[hit].name) + " and " + t.p[i].name + at;
+        }
+        hit = i;
+      }
+    }
+  return "";
 }

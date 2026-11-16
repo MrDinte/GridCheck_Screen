@@ -41,6 +41,8 @@ float priceAt(const Tariff& t, int minuteOfDay, int wday);
 const char* periodName(const Tariff& t, int index);
 /** Minutes from (minuteOfDay, wday) until the price period changes (max 7 days). */
 int minutesUntilChange(const Tariff& t, int minuteOfDay, int wday);
+/** "" if the periods make sense, otherwise what's wrong (same start and end, or two periods overlap). */
+std::string tariffProblem(const Tariff& t);
 
 struct Settings {
   std::string ssid, pass;  // home Wi-Fi

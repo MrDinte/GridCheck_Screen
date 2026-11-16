@@ -14,10 +14,11 @@ appending, then commit and push. Only keep project facts here (this repo is publ
 addresses, emails or keys.
 
 ## Current state (updated 2026-11-16)
-- Published: **0.7.7**. 0.7.5: Now page icons open their pages; Battery page battery that fills.
-  0.7.6: Power prices editor on Settings & info (supplier list + number pad), Grid supplier on
-  the phone page (not yet tried on the board). 0.7.7: refuses older versions (version read from
-  the signed image) and uploads while the hotspot is open; `TECH_NOTES.md` explains update security.
+- Published: **0.7.8**: the screen's Power prices editor (Settings & info) shows Peak, Off-peak
+  (each with an on/off switch, start/end time wheels, days) and Shoulder (all other times), plus
+  feed-in and supply; `tariffProblem()` in tariff.cpp checks overlaps for screen and phone.
+  0.7.5-0.7.7: tappable Now icons, filling battery, supplier list, refuse older versions and
+  uploads while the hotspot is open (`TECH_NOTES.md`). None of 0.7.5-0.7.8 tried on the board yet.
 - Offered, not yet agreed: passphrase on the signing key; signing `ota.json` is not needed
   (the version check uses the signed image).
 - Owner's board: on 0.7.x. Updating over Wi-Fi is confirmed working on the real board

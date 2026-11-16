@@ -57,7 +57,7 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 5. **Energy flow**: a Sankey diagram of where energy came from and went, for today, 7 or 30 days.
 6. **Battery**: a battery that fills up with the charge level, time to full or empty, stored kWh, today in/out, reserve, health and temperature.
 7. **History**: the last 24 hours of power, or daily totals for 7 or 30 days.
-8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, **Power prices** (tap to choose your grid supplier and change prices with a number pad), firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
+8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, **Power prices** (tap to choose your grid supplier, set Peak and Off-peak times, and change each price), firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
 
 ### Light and dark
 
@@ -87,11 +87,11 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
-- **0.7.7**: safer updates: the screen refuses older versions than the one it's running, and refuses firmware uploads whenever the setup hotspot is open. New [TECH_NOTES.md](TECH_NOTES.md) explains how updates are kept safe.
-- **0.7.6**: **Power prices** on the screen's Settings & info page: choose your grid supplier and change each price with a number pad. The phone page has a Grid supplier box too.
-- **0.7.5**: tap the Solar, Battery, Grid or Home icon on the Now page to open its page (Solar, Battery, Spent & earned, Today). The Battery page shows a battery that fills up with the charge level, with a lightning bolt while it charges.
-- **0.7.4**: the page dots sit next to the Home and Settings buttons, so longer status messages no longer run into them. New README screenshots.
-- **0.7.3**: checks for updates at start-up and twice a day; the red dot on the Settings button appears by itself when one is found. (0.7.2 briefly checked once a day.)
+- **0.7**: everything since 0.6:
+  - **Power prices on the screen** (Settings & info): pick your grid supplier from a list, switch Peak and Off-peak on or off, set their start and end times and days on hour/minute wheels, and type each price (Peak, Off-peak, Shoulder, feed-in, supply charge) on a number pad. The phone page has a Grid supplier box too. (0.7.6, 0.7.8)
+  - **Safer updates**: the screen refuses older versions than the one it's running, and refuses firmware uploads whenever the setup hotspot is open. [TECH_NOTES.md](TECH_NOTES.md) explains how updates are kept safe. (0.7.7)
+  - **Tap the Solar, Battery, Grid or Home icon** on the Now page to open its page, and a **battery that fills up** on the Battery page, with a lightning bolt while it charges. (0.7.5)
+  - The page dots sit next to the Home and Settings buttons; updates are checked at start-up and twice a day, with a red dot on the Settings button when one is found. (0.7.2 to 0.7.4)
 - **0.6**: everything since the first Wi-Fi update release:
   - **Time-of-use prices**: named periods (Off-peak, Shoulder, Peak, Free...) with times, days and prices. The screen shows the price now and when it changes, and says when power is free or at its dearest.
   - **Home and Settings buttons** on every page, and tap a page dot to jump to that page.

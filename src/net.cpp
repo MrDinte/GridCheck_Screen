@@ -554,23 +554,10 @@ static esp_err_t handleSave(httpd_req_t* req) {
     p.used = true;
     nPeriods++;
   }
-  // periods must not overlap: check every minute of the week
-  for (int d = 0; d < 7; d++)
-    for (int m = 0; m < 1440; m++) {
-      int hit = -1;
-      for (int i = 0; i < nPeriods; i++) {
-        Tariff one;
-        one.p[0] = tariff.p[i];
-        if (periodAt(one, m, d) != 0) continue;
-        if (hit >= 0) {
-          static const char* DAY[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-          char at[48];
-          snprintf(at, sizeof at, " overlap at %02d:%02d on %s.", m / 60, m % 60, DAY[d]);
-          return sendPage(req, "400 Bad Request", std::string(tariff.p[hit].name) + " and " + tariff.p[i].name + at, false);
-        }
-        hit = i;
-      }
-    }
+  {
+    const std::string clash = tariffProblem(tariff);
+    if (!clash.empty()) return sendPage(req, "400 Bad Request", clash, false);
+  }
   // screen
   const long palette = strtol(formField(body, "palette").c_str(), nullptr, 10);
   const long dimAfter = strtol(formField(body, "dimafter").c_str(), nullptr, 10);
