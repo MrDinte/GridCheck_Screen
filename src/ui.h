@@ -9,6 +9,8 @@ void update();
 void showPage(int page);
 /** Rebuild every page (after the colours change). */
 void rebuild();
+/** Open the power prices editor (from Settings & info; also used by the PC renderer). */
+void openPrices();
 /** Choose the History / Money / Energy flow ranges (days); used by the PC renderer. */
 void setRanges(int history, int money, int flow);
 }  // namespace ui

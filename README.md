@@ -54,7 +54,7 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 5. **Energy flow**: a Sankey diagram of where energy came from and went, for today, 7 or 30 days.
 6. **Battery**: a battery that fills up with the charge level, time to full or empty, stored kWh, today in/out, reserve, health and temperature.
 7. **History**: the last 24 hours of power, or daily totals for 7 or 30 days.
-8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
+8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, **Power prices** (tap to choose your grid supplier and change prices with a number pad), firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
 
 ### Light and dark
 
@@ -75,7 +75,7 @@ The **phone settings page** (served by the screen) covers:
 - Time zone.
 - Colours (GridCheck, Classic, Ocean), theme (dark, light, or auto by time of day) and brightness.
 - **Screen dimming**: after a set time without a touch, and overnight.
-- **Power prices**: feed-in, supply charge, and **time of use**: up to 6 named periods (Off-peak, Shoulder, Peak, Free...) with times, weekdays/weekends and prices, plus a price for all other times.
+- **Power prices**: your grid supplier (pick from a list or type it), feed-in, supply charge, and **time of use**: up to 6 named periods (Off-peak, Shoulder, Peak, Free...) with times, weekdays/weekends and prices, plus a price for all other times.
 - Forecast location and panel size.
 - Firmware updates.
 - An optional PIN.
@@ -84,6 +84,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.7.6**: **Power prices** on the screen's Settings & info page: choose your grid supplier and change each price with a number pad. The phone page has a Grid supplier box too.
 - **0.7.5**: tap the Solar, Battery, Grid or Home icon on the Now page to open its page (Solar, Battery, Spent & earned, Today). The Battery page shows a battery that fills up with the charge level, with a lightning bolt while it charges.
 - **0.7.4**: the page dots sit next to the Home and Settings buttons, so longer status messages no longer run into them. New README screenshots.
 - **0.7.3**: checks for updates at start-up and twice a day; the red dot on the Settings button appears by itself when one is found. (0.7.2 briefly checked once a day.)

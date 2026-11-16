@@ -128,6 +128,7 @@ static void load() {
   S.pinSalt = getStr(h, "psalt", "");
   S.pinHash = getStr(h, "phash", "");
   S.updateUrl = getStr(h, "updurl", "");
+  S.supplier = getStr(h, "supplier", "");
   nvs_close(h);
 }
 
@@ -155,6 +156,7 @@ static void save() {
   nvs_set_str(h, "psalt", S.pinSalt.c_str());
   nvs_set_str(h, "phash", S.pinHash.c_str());
   nvs_set_str(h, "updurl", S.updateUrl.c_str());
+  nvs_set_str(h, "supplier", S.supplier.c_str());
   nvs_commit(h);
   nvs_close(h);
   version++;
@@ -175,6 +177,14 @@ void setPalette(uint8_t palette) {
 void setDimAfter(uint8_t minutes) {
   std::lock_guard<std::mutex> g(lock);
   S.dimAfterMin = minutes;
+  save();
+}
+
+void setPrices(const Tariff& tariff, const std::string& supplier) {
+  std::lock_guard<std::mutex> g(lock);
+  S.tariff = tariff;
+  S.tariff.set = true;
+  S.supplier = supplier.substr(0, SUPPLIER_MAX);
   save();
 }
 
@@ -359,7 +369,11 @@ static std::string page(const std::string& message, bool good) {
       snprintf(b, sizeof b, "%02u:%02u", m / 60, m % 60);
       return std::string(b);
     };
-    h += "<div class=card><h2>Power prices</h2><div class=row><div><label for=sell>Feed-in price (c/kWh)</label><input id=sell name=sell inputmode=decimal value='" +
+    h += "<div class=card><h2>Power prices</h2><label for=supplier>Grid supplier</label><input id=supplier name=supplier list=suppliers maxlength=31 "
+         "placeholder='e.g. AGL, Origin Energy' value='" + esc(s.supplier) + "'><datalist id=suppliers>";
+    for (const char* n : SUPPLIERS) h += std::string("<option value='") + n + "'>";
+    h += "</datalist><p class=help style='margin:4px 0 12px'>Pick from the list or type your own. Prices can also be changed on the screen: Settings &amp; info, Power prices.</p>"
+         "<div class=row><div><label for=sell>Feed-in price (c/kWh)</label><input id=sell name=sell inputmode=decimal value='" +
          num(t.sell) + "'></div><div><label for=supply>Supply charge (c/day)</label><input id=supply name=supply inputmode=decimal placeholder='optional' value='" +
          (t.supply > 0 ? num(t.supply) : std::string("")) + "'></div></div>";
     h += "<label style='margin-top:16px'>Time of use (optional)</label>"
@@ -604,6 +618,7 @@ static esp_err_t handleSave(httpd_req_t* req) {
     if (!tz.empty()) S.tz = tz;
     S.brightness = (uint8_t)constrain(bright, 5L, 100L);
     S.tariff = tariff;
+    S.supplier = trim(formField(body, "supplier")).substr(0, SUPPLIER_MAX);
     S.palette = (uint8_t)constrain(palette, 0L, 2L);
     if (hasField(body, "theme")) S.theme = (uint8_t)constrain(strtol(formField(body, "theme").c_str(), nullptr, 10), 0L, 2L);
     S.dimAfterMin = (uint8_t)constrain(dimAfter, 0L, 60L);

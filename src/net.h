@@ -52,6 +52,7 @@ struct Settings {
   uint8_t brightness = 80;
   std::string pinSalt, pinHash;  // optional settings PIN (hash only)
   Tariff tariff;
+  std::string supplier;    // who the grid power comes from, e.g. "AGL" ("" = not set)
   float lat = NAN, lon = NAN, kwp = 0;  // optional, for the Open-Meteo solar forecast
   // screen
   uint8_t palette = 0;          // 0 GridCheck (pink), 1 Classic, 2 Ocean
@@ -62,6 +63,14 @@ struct Settings {
   uint16_t nightStart = 20 * 60, nightEnd = 7 * 60;  // minutes after midnight
   std::string updateUrl;        // where to look for firmware updates ("" = GridCheck's own site)
 };
+
+/** Electricity retailers offered on screen and on the phone page (any name can be typed on the phone). */
+inline const char* const SUPPLIERS[] = {"1st Energy", "ActewAGL", "AGL", "Alinta Energy", "Amber Electric", "Aurora Energy", "Diamond Energy",
+                                        "Dodo", "Energy Locals", "EnergyAustralia", "ENGIE", "Ergon Energy", "GloBird Energy", "Lumo Energy",
+                                        "Momentum Energy", "Nectr", "Origin Energy", "OVO Energy", "Powershop", "ReAmped Energy", "Red Energy",
+                                        "Simply Energy", "Sumo", "Synergy", "Tango Energy"};
+inline constexpr int SUPPLIER_COUNT = sizeof SUPPLIERS / sizeof SUPPLIERS[0];
+static constexpr size_t SUPPLIER_MAX = 31;
 
 /** Palette names, index = Settings::palette. */
 inline const char* const PALETTE_NAMES[3] = {"GridCheck", "Classic", "Ocean"};
@@ -90,4 +99,6 @@ void restart();
 void setPalette(uint8_t palette);
 void setTheme(uint8_t theme);
 void setDimAfter(uint8_t minutes);
+/** Save prices and the grid supplier changed on the screen (period names and times are kept). */
+void setPrices(const Tariff& tariff, const std::string& supplier);
 }  // namespace net

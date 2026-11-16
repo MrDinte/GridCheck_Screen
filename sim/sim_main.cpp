@@ -80,6 +80,7 @@ void restart() {}
 void setPalette(uint8_t p) { S.palette = p; }
 void setDimAfter(uint8_t m) { S.dimAfterMin = m; }
 void setTheme(uint8_t t) { S.theme = t; }
+void setPrices(const Tariff& t, const std::string& sup) { S.tariff = t; S.supplier = sup; }
 }
 
 namespace ota {
@@ -120,6 +121,7 @@ int main(int argc, char** argv) {
   dd.hor_res = 1024; dd.ver_res = 600; dd.flush_cb = flush; dd.draw_buf = &db; lv_disp_drv_register(&dd);
 
   S.host = "192.168.1.50"; S.demo = false;
+  if (const char* sup = getenv("SIM_SUPPLIER")) S.supplier = sup;
   S.tariff.set = true; S.tariff.buy = 32.5f; S.tariff.sell = 6; S.tariff.supply = 110;
   if (const char* tou = getenv("SIM_TOU")) {
     // SIM_TOU=free|peak|off: one period covering the whole day, plus a dearer one elsewhere in the week
@@ -160,6 +162,13 @@ int main(int argc, char** argv) {
       if (!strcmp(argv[2], "money30")) ui::setRanges(1, 30, 1);
       if (!strcmp(argv[2], "flow30")) ui::setRanges(1, 7, 30);
     }
+  }
+  if (argc > 2 && !strcmp(argv[2], "prices")) { ui::showPage(7); ui::openPrices(); }
+  if (argc > 2 && !strcmp(argv[2], "prices-list")) {  // supplier list open
+    ui::showPage(7); ui::openPrices();
+    lv_obj_t* dd = lv_obj_get_child(lv_obj_get_child(lv_obj_get_child(lv_layer_top(), 0), 3), 0);
+    dd = lv_obj_get_child(dd, 1);
+    lv_dropdown_open(dd);
   }
   ui::update();
   for (int i = 0; i < 30; i++) { fakeMs += 33; lv_tick_inc(33); lv_timer_handler(); }
