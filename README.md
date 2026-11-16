@@ -47,12 +47,12 @@ From version **0.5.0** on, the screen updates itself over Wi-Fi. Install 0.5.0 o
 
 Swipe between eight pages, tap a page dot to jump to one, or use the **Home** and **Settings** buttons at the bottom right of every page:
 
-1. **Now**: solar, battery, grid and home power around a hub, with moving dots, the battery ring and a status line.
+1. **Now**: solar, battery, grid and home power around a hub, with moving dots, the battery ring and a status line. Tap an icon to open its page.
 2. **Today**: solar made, home used, % self-powered, grid in/out, battery in/out, and where your solar went.
 3. **Solar vs forecast**: today's solar against the Open-Meteo forecast (or your 7-day average), with yesterday and tomorrow.
 4. **Spent & earned**: dollars spent on grid power and earned from export per day, for 7 or 30 days.
 5. **Energy flow**: a Sankey diagram of where energy came from and went, for today, 7 or 30 days.
-6. **Battery**: charge ring, time to full or empty, stored kWh, today in/out, reserve, health and temperature.
+6. **Battery**: a battery that fills up with the charge level, time to full or empty, stored kWh, today in/out, reserve, health and temperature.
 7. **History**: the last 24 hours of power, or daily totals for 7 or 30 days.
 8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
 
@@ -84,6 +84,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.7.5**: tap the Solar, Battery, Grid or Home icon on the Now page to open its page (Solar, Battery, Spent & earned, Today). The Battery page shows a battery that fills up with the charge level, with a lightning bolt while it charges.
 - **0.7.4**: the page dots sit next to the Home and Settings buttons, so longer status messages no longer run into them. New README screenshots.
 - **0.7.3**: checks for updates at start-up and twice a day; the red dot on the Settings button appears by itself when one is found. (0.7.2 briefly checked once a day.)
 - **0.6**: everything since the first Wi-Fi update release:

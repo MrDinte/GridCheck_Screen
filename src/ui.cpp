@@ -110,6 +110,8 @@ void fmtKw(char* buf, size_t n, float v) {
 }
 
 // ---- top & bottom bars -----------------------------------------------------
+static void goPage(lv_event_t* e) { showPage((int)(intptr_t)lv_event_get_user_data(e)); }
+
 static lv_obj_t* chip(lv_obj_t* parent) {
   lv_obj_t* c = lv_obj_create(parent);
   lv_obj_remove_style_all(c);
@@ -173,8 +175,7 @@ static void buildBars(lv_obj_t* scr) {
     lv_obj_align(dots[i], LV_ALIGN_RIGHT_MID, -(24 + 2 * 64 + 12 + 28) - (PAGES - 1 - i) * 24, -4);
     lv_obj_add_flag(dots[i], LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_ext_click_area(dots[i], 18);
-    lv_obj_add_event_cb(dots[i], [](lv_event_t* e) { showPage((int)(intptr_t)lv_event_get_user_data(e)); }, LV_EVENT_CLICKED,
-                        (void*)(intptr_t)i);
+    lv_obj_add_event_cb(dots[i], goPage, LV_EVENT_CLICKED, (void*)(intptr_t)i);
   }
 
   // Home and Settings buttons, on every page
@@ -189,7 +190,7 @@ static void buildBars(lv_obj_t* scr) {
     lv_obj_align(b, LV_ALIGN_RIGHT_MID, x, -4);
     *icon = label(b, &lv_font_montserrat_22, C_MUTED, sym);
     lv_obj_center(*icon);
-    lv_obj_add_event_cb(b, [](lv_event_t* e) { showPage((int)(intptr_t)lv_event_get_user_data(e)); }, LV_EVENT_CLICKED, (void*)(intptr_t)page);
+    lv_obj_add_event_cb(b, goPage, LV_EVENT_CLICKED, (void*)(intptr_t)page);
     return b;
   };
   setBtn = navBtn(&setIcon, LV_SYMBOL_SETTINGS, PAGES - 1, -24);
@@ -282,15 +283,20 @@ static void setLink(Link& k, float kw, bool intoHub) {
   }
 }
 
+// One of the four sources. Tapping its icon or its numbers opens that source's page.
 static void buildNode(lv_obj_t* parent, Node& n, int cx, int cy, bool textLeft, lv_color_t color, const char* icon,
-                      const char* name) {
+                      const char* name, int page) {
   n.badge = lv_obj_create(parent);
   lv_obj_remove_style_all(n.badge);
   lv_obj_set_size(n.badge, BADGE_R * 2, BADGE_R * 2);
   lv_obj_set_pos(n.badge, cx - BADGE_R, cy - BADGE_R);
   lv_obj_set_style_radius(n.badge, LV_RADIUS_CIRCLE, 0);
   lv_obj_set_style_bg_color(n.badge, lv_color_mix(color, C_BG, 40), 0);
+  lv_obj_set_style_bg_color(n.badge, lv_color_mix(color, C_BG, 90), LV_STATE_PRESSED);
   lv_obj_set_style_bg_opa(n.badge, LV_OPA_COVER, 0);
+  lv_obj_add_flag(n.badge, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_ext_click_area(n.badge, 10);
+  lv_obj_add_event_cb(n.badge, goPage, LV_EVENT_CLICKED, (void*)(intptr_t)page);
   n.icon = label(n.badge, &eh_icons_44, color, icon);
   lv_obj_center(n.icon);
 
@@ -298,6 +304,8 @@ static void buildNode(lv_obj_t* parent, Node& n, int cx, int cy, bool textLeft, 
   lv_obj_set_size(box, 260, 140);
   const int bx = textLeft ? cx - BADGE_R - 28 - 260 : cx + BADGE_R + 28;
   lv_obj_set_pos(box, bx, cy - 70);
+  lv_obj_add_flag(box, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(box, goPage, LV_EVENT_CLICKED, (void*)(intptr_t)page);
   lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(box, LV_FLEX_ALIGN_CENTER, textLeft ? LV_FLEX_ALIGN_END : LV_FLEX_ALIGN_START,
                         textLeft ? LV_FLEX_ALIGN_END : LV_FLEX_ALIGN_START);
@@ -339,10 +347,10 @@ static void buildNow(lv_obj_t* page) {
   lv_obj_set_style_bg_opa(core, LV_OPA_COVER, 0);
   lv_obj_center(core);
 
-  buildNode(page, nSolar, HUB_X - dx, HUB_Y - dy, true, C_SOLAR, ICON_SUN, "Solar");
-  buildNode(page, nBatt, HUB_X + dx, HUB_Y - dy, false, C_BATT, ICON_BATT, "Battery");
-  buildNode(page, nGrid, HUB_X - dx, HUB_Y + dy, true, C_GRID, ICON_BOLT, "Grid");
-  buildNode(page, nHouse, HUB_X + dx, HUB_Y + dy, false, C_INK, ICON_HOME, "Home");
+  buildNode(page, nSolar, HUB_X - dx, HUB_Y - dy, true, C_SOLAR, ICON_SUN, "Solar", 2);
+  buildNode(page, nBatt, HUB_X + dx, HUB_Y - dy, false, C_BATT, ICON_BATT, "Battery", 5);
+  buildNode(page, nGrid, HUB_X - dx, HUB_Y + dy, true, C_GRID, ICON_BOLT, "Grid", 3);
+  buildNode(page, nHouse, HUB_X + dx, HUB_Y + dy, false, C_INK, ICON_HOME, "Home", 1);
 
   // battery charge ring around the battery badge
   nBatt.ring = lv_arc_create(page);

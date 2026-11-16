@@ -577,24 +577,44 @@ void updateFlow(const Live&, bool full) {
 // ============================================================================
 // Battery
 // ============================================================================
-static lv_obj_t *bArc, *bPct, *bState, *bFacts[7];
+// An upright battery that fills from the bottom with the charge level.
+static constexpr int BATT_W = 180, BATT_H = 300, BATT_CAP_W = 72, BATT_CAP_H = 20, BATT_BORDER = 8, BATT_PAD = 8;
+static constexpr int BATT_INNER_H = BATT_H - 2 * (BATT_BORDER + BATT_PAD);
+static lv_obj_t *bBody, *bCap, *bFill, *bBolt, *bPct, *bState, *bFacts[7];
 
 void buildBattery(lv_obj_t* page) {
-  bArc = lv_arc_create(page);
-  lv_obj_set_size(bArc, 340, 340);
-  lv_obj_set_pos(bArc, 70, (BODY_H - 340) / 2);
-  lv_arc_set_rotation(bArc, 270);
-  lv_arc_set_bg_angles(bArc, 0, 360);
-  lv_arc_set_range(bArc, 0, 100);
-  lv_arc_set_value(bArc, 0);
-  lv_obj_remove_style(bArc, nullptr, LV_PART_KNOB);
-  lv_obj_clear_flag(bArc, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_set_style_arc_width(bArc, 22, LV_PART_MAIN);
-  lv_obj_set_style_arc_width(bArc, 22, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_color(bArc, C_FAINT, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(bArc, C_BATT, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_rounded(bArc, false, LV_PART_INDICATOR);
+  const int bx = 70, by = (BODY_H - BATT_H - BATT_CAP_H) / 2 + BATT_CAP_H;
+  bCap = plain(page);
+  lv_obj_set_size(bCap, BATT_CAP_W, BATT_CAP_H + 10);  // tucks under the body's rounded top
+  lv_obj_set_pos(bCap, bx + (BATT_W - BATT_CAP_W) / 2, by - BATT_CAP_H);
+  lv_obj_set_style_radius(bCap, 8, 0);
+  lv_obj_set_style_bg_color(bCap, C_FAINT, 0);
+  lv_obj_set_style_bg_opa(bCap, LV_OPA_COVER, 0);
 
+  bBody = plain(page);
+  lv_obj_set_size(bBody, BATT_W, BATT_H);
+  lv_obj_set_pos(bBody, bx, by);
+  lv_obj_set_style_radius(bBody, 28, 0);
+  lv_obj_set_style_bg_color(bBody, C_BG, 0);
+  lv_obj_set_style_bg_opa(bBody, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_color(bBody, C_FAINT, 0);
+  lv_obj_set_style_border_width(bBody, BATT_BORDER, 0);
+  lv_obj_set_style_pad_all(bBody, BATT_PAD, 0);
+
+  bFill = plain(bBody);
+  lv_obj_set_size(bFill, LV_PCT(100), 0);
+  lv_obj_align(bFill, LV_ALIGN_BOTTOM_MID, 0, 0);
+  lv_obj_set_style_radius(bFill, 14, 0);
+  lv_obj_set_style_bg_color(bFill, C_BATT, 0);
+  lv_obj_set_style_bg_opa(bFill, LV_OPA_COVER, 0);
+
+  // lightning bolt in the middle while charging
+  bBolt = label(bBody, &eh_icons_44, C_BG, "\xEF\x83\xA7");
+  lv_obj_center(bBolt);
+  lv_obj_add_flag(bBolt, LV_OBJ_FLAG_HIDDEN);
+
+  // charge level and what the battery is doing, beside the battery
+  const int tx = bx + BATT_W + 26, tw = 460 - tx;
   lv_obj_t* row = plain(page);
   lv_obj_set_size(row, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
   lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
@@ -602,11 +622,11 @@ void buildBattery(lv_obj_t* page) {
   bPct = label(row, &eh_num_76, C_INK, "\xE2\x80\x93");
   lv_obj_t* u = label(row, &lv_font_montserrat_28, C_MUTED, "%");
   lv_obj_set_style_pad_bottom(u, 12, 0);
-  lv_obj_align_to(row, bArc, LV_ALIGN_CENTER, 0, -14);
+  lv_obj_set_pos(row, tx, BODY_H / 2 - 70);
   bState = label(page, &lv_font_montserrat_20, C_BATT, "");
-  lv_obj_set_width(bState, 300);
-  lv_obj_set_style_text_align(bState, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align_to(bState, bArc, LV_ALIGN_CENTER, 0, 52);
+  lv_obj_set_width(bState, tw);
+  lv_label_set_long_mode(bState, LV_LABEL_LONG_WRAP);
+  lv_obj_set_pos(bState, tx + 4, BODY_H / 2 + 22);
 
   const char* names[7] = {"Time", "Stored", "Power", "Today in / out", "Reserve", "Health", "Temperature"};
   lv_obj_t* col = plain(page);
@@ -642,7 +662,8 @@ void updateBattery(const Live& l, bool) {
   char b[48];
   if (!fresh || std::isnan(l.soc)) {
     lv_label_set_text(bPct, "\xE2\x80\x93");
-    lv_arc_set_value(bArc, 0);
+    lv_obj_set_height(bFill, 0);
+    lv_obj_add_flag(bBolt, LV_OBJ_FLAG_HIDDEN);
     lv_label_set_text(bState, "");
     for (auto* f : bFacts) lv_label_set_text(f, "\xE2\x80\x93");
     return;
@@ -650,17 +671,30 @@ void updateBattery(const Live& l, bool) {
   const int soc = (int)lroundf(l.soc);
   const bool low = !std::isnan(l.reserve) ? l.soc <= l.reserve + 5 : l.soc <= 15;
   lv_label_set_text_fmt(bPct, "%d", soc);
-  lv_arc_set_value(bArc, soc);
-  lv_obj_set_style_arc_color(bArc, low ? C_WARN : C_BATT, LV_PART_INDICATOR);
+  // fill from the bottom; keep a sliver showing above 0 so an almost-empty battery still reads
+  const int fillH = soc <= 0 ? 0 : std::max(10, BATT_INNER_H * std::min(soc, 100) / 100);
+  lv_obj_set_height(bFill, fillH);
+  lv_obj_set_style_bg_color(bFill, low ? C_WARN : C_BATT, 0);
+  lv_obj_set_style_border_color(bBody, low ? lv_color_mix(C_WARN, C_FAINT, 110) : C_FAINT, 0);
+  lv_obj_set_style_bg_color(bCap, low ? lv_color_mix(C_WARN, C_FAINT, 110) : C_FAINT, 0);
+  if (l.battery > IDLE_KW) {
+    lv_obj_clear_flag(bBolt, LV_OBJ_FLAG_HIDDEN);
+    // in the middle of the fill once there's room, otherwise just above it
+    const bool inside = fillH >= 80;
+    lv_obj_set_style_text_color(bBolt, inside ? C_BG : (low ? C_WARN : C_BATT), 0);
+    lv_obj_align_to(bBolt, bFill, inside ? LV_ALIGN_CENTER : LV_ALIGN_OUT_TOP_MID, 0, inside ? 0 : -10);
+  } else {
+    lv_obj_add_flag(bBolt, LV_OBJ_FLAG_HIDDEN);
+  }
   fmtKw(b, sizeof b, l.battery);
   if (l.battery > IDLE_KW) {
-    lv_label_set_text_fmt(bState, "Charging %s kW", b);
+    lv_label_set_text_fmt(bState, "Charging\n%s kW", b);
     lv_label_set_text(timeCap, "Full in");
     char t[32];
     duration(t, sizeof t, !std::isnan(l.roomKWh) ? l.roomKWh / l.battery : NAN);
     lv_label_set_text(bFacts[0], t);
   } else if (l.battery < -IDLE_KW) {
-    lv_label_set_text_fmt(bState, "Discharging %s kW", b);
+    lv_label_set_text_fmt(bState, "Discharging\n%s kW", b);
     lv_label_set_text(timeCap, "Lasts");
     char t[32] = "~";
     duration(t + 1, sizeof t - 1, !std::isnan(l.availKWh) ? l.availKWh / -l.battery : NAN);

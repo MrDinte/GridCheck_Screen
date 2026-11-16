@@ -13,9 +13,10 @@ requests and agreed next steps, anything parked. Keep it short, replace stale li
 appending, then commit and push. Only keep project facts here (this repo is public): no IP
 addresses, emails or keys.
 
-## Current state (updated 2026-11-15)
-- Published: **0.7.4** (page dots beside Home/Settings buttons, new README screenshots).
-  The USB install page and `ota.json` both serve 0.7.4.
+## Current state (updated 2026-11-16)
+- Published: **0.7.5** (tap the Solar/Battery/Grid/Home icons on the Now page to open their
+  pages; Battery page shows a battery that fills up, with a bolt while charging; owner approved
+  the look in the simulator). The USB install page and `ota.json` both serve 0.7.5.
 - Owner's board: on 0.7.x. Updating over Wi-Fi is confirmed working on the real board
   (0.6.7 → 0.6.8); the red update dot is built and was being checked with 0.7.x test releases.
 - Offered, not yet agreed: use Sigenergy lifetime energy counters (30088 PV, 30094 load,
