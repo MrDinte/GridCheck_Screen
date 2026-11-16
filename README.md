@@ -34,10 +34,13 @@ From version **0.5.0** on, the screen updates itself over Wi-Fi. Install 0.5.0 o
 
 ### Security
 
+How updates are protected, and the limits, are explained in full in **[TECH_NOTES.md](TECH_NOTES.md)**. In short:
+
 - **Signed updates.** Every update must be signed with GridCheck's private key, which is not in this repository. The screen checks the signature against the public key built into its firmware (`src/signing_pub.h`) before it will switch over. A file that is unsigned, signed with another key, or changed by even one bit is refused. That holds even if someone gets into this GitHub account, or uploads a file from inside your network.
+- **No going back to old versions.** The screen refuses an older release than the one it's running (the version is read from inside the signed file, so it can't be faked).
 - **Nothing is opened to the internet.** The screen only makes outgoing HTTPS requests (certificate checked) to this site and to Open-Meteo for the forecast. Nothing outside your network can connect to it.
 - **Set a settings PIN** on the phone page. It protects changing settings and installing updates from your home network.
-- **No updates through the setup hotspot.** The `GridCheck-Setup` hotspot has no password, so the screen refuses firmware through it.
+- **No updates through the setup hotspot.** The `GridCheck-Setup` hotspot has no password, so the screen refuses firmware uploads while it is open.
 - **Read-only.** The screen only *reads* the inverter (Modbus function 4). It never sends commands to it.
 - **USB is physical access.** Anyone holding the board can re-flash it over USB. As with any device in your home, keep it where you'd keep your router.
 
@@ -84,6 +87,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.7.7**: safer updates: the screen refuses older versions than the one it's running, and refuses firmware uploads whenever the setup hotspot is open. New [TECH_NOTES.md](TECH_NOTES.md) explains how updates are kept safe.
 - **0.7.6**: **Power prices** on the screen's Settings & info page: choose your grid supplier and change each price with a number pad. The phone page has a Grid supplier box too.
 - **0.7.5**: tap the Solar, Battery, Grid or Home icon on the Now page to open its page (Solar, Battery, Spent & earned, Today). The Battery page shows a battery that fills up with the charge level, with a lightning bolt while it charges.
 - **0.7.4**: the page dots sit next to the Home and Settings buttons, so longer status messages no longer run into them. New README screenshots.

@@ -749,8 +749,8 @@ static esp_err_t handleUpload(httpd_req_t* req) {
   httpd_req_get_hdr_value_str(req, "X-PIN", pinBuf, sizeof pinBuf);
   std::string err = otaPin(pinBuf);
   if (!err.empty()) return sendError(req, "403 Forbidden", err);
-  // The setup hotspot has no password, so never take firmware through it.
-  if (!connected()) return sendError(req, "409 Conflict", "Connect the screen to your home Wi-Fi first, then install updates from there.");
+  // The setup hotspot has no password, so never take firmware while it is open.
+  if (!connected() || ap) return sendError(req, "409 Conflict", "Connect the screen to your home Wi-Fi first, then install updates from there.");
   if (!ota::uploadBegin(req->content_len, err)) return sendError(req, "400 Bad Request", err);
   ESP_LOGI(TAG, "firmware upload, %u bytes", (unsigned)req->content_len);
   const size_t CHUNK = 4096;

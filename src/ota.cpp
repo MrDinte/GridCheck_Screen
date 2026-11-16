@@ -130,6 +130,14 @@ static bool writeEnd(std::string& err) {
     ESP_LOGW(TAG, "rejected update: %s", err.c_str());
     return false;
   }
+  // The version is read from inside the signed file, so it can't be faked. Refuse older
+  // releases, so nobody can put back an old version with a problem that has since been fixed.
+  esp_app_desc_t d = {};
+  if (esp_ota_get_partition_description(wPart, &d) != ESP_OK || !strchr(d.version, '.') || cmpVersion(d.version, EH_VERSION) < 0) {
+    err = std::string("that is an older version (") + d.version + ") than this screen's " EH_VERSION ", so it won't be installed";
+    ESP_LOGW(TAG, "rejected update: %s", err.c_str());
+    return false;
+  }
   e = esp_ota_set_boot_partition(wPart);
   if (e != ESP_OK) {
     err = esp_err_to_name(e);

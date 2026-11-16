@@ -1,15 +1,15 @@
 {
   "name": "GridCheck for Waveshare ESP32-S3-Touch-LCD-7B",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "gridcheck-7b-0.7.6-bootloader.bin", "offset": 0 },
-        { "path": "gridcheck-7b-0.7.6-partitions.bin", "offset": 32768 },
-        { "path": "gridcheck-7b-0.7.6-otadata.bin", "offset": 61440 },
-        { "path": "gridcheck-7b-0.7.6-app.bin", "offset": 131072 }
+        { "path": "gridcheck-7b-0.7.7-bootloader.bin", "offset": 0 },
+        { "path": "gridcheck-7b-0.7.7-partitions.bin", "offset": 32768 },
+        { "path": "gridcheck-7b-0.7.7-otadata.bin", "offset": 61440 },
+        { "path": "gridcheck-7b-0.7.7-app.bin", "offset": 131072 }
       ]
     }
   ]

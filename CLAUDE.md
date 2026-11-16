@@ -14,9 +14,12 @@ appending, then commit and push. Only keep project facts here (this repo is publ
 addresses, emails or keys.
 
 ## Current state (updated 2026-11-16)
-- Published: **0.7.5** (tap the Solar/Battery/Grid/Home icons on the Now page to open their
-  pages; Battery page shows a battery that fills up, with a bolt while charging; owner approved
-  the look in the simulator). The USB install page and `ota.json` both serve 0.7.5.
+- Published: **0.7.7**. 0.7.5: Now page icons open their pages; Battery page battery that fills.
+  0.7.6: Power prices editor on Settings & info (supplier list + number pad), Grid supplier on
+  the phone page (not yet tried on the board). 0.7.7: refuses older versions (version read from
+  the signed image) and uploads while the hotspot is open; `TECH_NOTES.md` explains update security.
+- Offered, not yet agreed: passphrase on the signing key; signing `ota.json` is not needed
+  (the version check uses the signed image).
 - Owner's board: on 0.7.x. Updating over Wi-Fi is confirmed working on the real board
   (0.6.7 → 0.6.8); the red update dot is built and was being checked with 0.7.x test releases.
 - Offered, not yet agreed: use Sigenergy lifetime energy counters (30088 PV, 30094 load,
