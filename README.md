@@ -57,7 +57,7 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 5. **Energy flow**: a Sankey diagram of where energy came from and went, for today, 7 or 30 days.
 6. **Battery**: a battery that fills up with the charge level, time to full or empty, stored kWh, today in/out, reserve, health and temperature.
 7. **History**: the last 24 hours of power, or daily totals for 7 or 30 days.
-8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, **Power prices** (tap to choose your grid supplier, set Peak and Off-peak times, and change each price), firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
+8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, **Power prices** (tap to choose your grid supplier, set Peak and Off-peak times, set when feed-in is paid and any daily limit, and change each price), firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
 
 ### Light and dark
 
@@ -78,7 +78,7 @@ The **phone settings page** (served by the screen) covers:
 - Time zone.
 - Colours (GridCheck, Classic, Ocean), theme (dark, light, or auto by time of day) and brightness.
 - **Screen dimming**: after a set time without a touch, and overnight.
-- **Power prices**: your grid supplier (pick from a list or type it), feed-in, supply charge, and **time of use**: up to 6 named periods (Off-peak, Shoulder, Peak, Free...) with times, weekdays/weekends and prices, plus a price for all other times.
+- **Power prices**: your grid supplier (pick from a list or type it), feed-in (all day, or only at set hours with a price for other times, and an optional daily limit such as the first 10 kWh), supply charge, and **time of use**: up to 6 named periods (Off-peak, Shoulder, Peak, Free...) with times, weekdays/weekends and prices, plus a price for all other times.
 - Forecast location and panel size.
 - Firmware updates.
 - An optional PIN.
@@ -89,6 +89,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 - **0.7**: everything since 0.6:
   - **Power prices on the screen** (Settings & info): pick your grid supplier from a list, switch Peak and Off-peak on or off, set their start and end times and days on hour/minute wheels, and type each price (Peak, Off-peak, Shoulder, feed-in, supply charge) on a number pad. The phone page has a Grid supplier box too. (0.7.6, 0.7.8)
+  - **Feed-in at set hours**, e.g. 10c from 4 pm to 9 pm for the first 10 kWh a day and 0c at other times, on the screen and the phone page. Spent & earned counts it that way. (0.7.9)
   - **Safer updates**: the screen refuses older versions than the one it's running, and refuses firmware uploads whenever the setup hotspot is open. [TECH_NOTES.md](TECH_NOTES.md) explains how updates are kept safe. (0.7.7)
   - **Tap the Solar, Battery, Grid or Home icon** on the Now page to open its page, and a **battery that fills up** on the Battery page, with a lightning bolt while it charges. (0.7.5)
   - The page dots sit next to the Home and Settings buttons; updates are checked at start-up and twice a day, with a red dot on the Settings button when one is found. (0.7.2 to 0.7.4)

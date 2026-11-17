@@ -27,12 +27,31 @@ struct Tariff {
   float supply = 0;             // c/day
   char baseName[16] = "";       // name for "all other times", e.g. "Shoulder" ("" = Standard)
   TouPeriod p[TOU_MAX];
+  // feed-in paid only at set times (e.g. 16:00 to 21:00): `sell` then, `sellOther` the rest of the time.
+  // Added in 0.7.9 at the end, so settings saved by older versions still load (see TariffV1).
+  bool sellTimed = false;
+  uint8_t sellDays = TOU_EVERY_DAY;
+  uint16_t sellStart = 16 * 60, sellEnd = 21 * 60;
+  float sellOther = 0;
+  // a daily limit on the kWh paid at `sell` (e.g. the first 10 kWh); 0 = no limit
+  float sellCapKWh = 0, sellAfterCap = 0;
   bool hasPeriods() const {
     for (const auto& x : p)
       if (x.used) return true;
     return false;
   }
 };
+/** The prices as saved by 0.7.8 and earlier: Tariff without the feed-in times. */
+struct TariffV1 {
+  bool set;
+  float buy, sell, supply;
+  char baseName[16];
+  TouPeriod p[TOU_MAX];
+};
+/** Is minute m of weekday wday inside start..end (may wrap past midnight) on those days? */
+bool inWindow(uint16_t start, uint16_t end, uint8_t days, int m, int wday);
+/** Feed-in price (c/kWh) at a given minute of the day and day of the week. */
+float sellAt(const Tariff& t, int minuteOfDay, int wday);
 /** Which period applies (index into p[]), or -1 for the normal `buy` price. wday: 0 = Sunday. */
 int periodAt(const Tariff& t, int minuteOfDay, int wday);
 /** Import price (c/kWh) at a given minute of the day and day of the week. */

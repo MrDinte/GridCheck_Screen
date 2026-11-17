@@ -14,11 +14,13 @@ appending, then commit and push. Only keep project facts here (this repo is publ
 addresses, emails or keys.
 
 ## Current state (updated 2026-11-16)
-- Published: **0.7.8**: the screen's Power prices editor (Settings & info) shows Peak, Off-peak
-  (each with an on/off switch, start/end time wheels, days) and Shoulder (all other times), plus
-  feed-in and supply; `tariffProblem()` in tariff.cpp checks overlaps for screen and phone.
-  0.7.5-0.7.7: tappable Now icons, filling battery, supplier list, refuse older versions and
-  uploads while the hotspot is open (`TECH_NOTES.md`). None of 0.7.5-0.7.8 tried on the board yet.
+- Published: **0.7.9**: feed-in at set hours (`Tariff::sellTimed/sellStart/sellEnd/sellDays`,
+  `sellOther` outside them) and a daily limit (`sellCapKWh`, then `sellAfterCap`); owner's plan is
+  10c 16:00-21:00 for the first 10 kWh, 0c otherwise. Today's paid kWh is kept in `/data/fit.bin`.
+  Tariff grew at the end; `TariffV1` (0.7.8 and earlier) still loads from NVS.
+  0.7.5-0.7.8: tappable Now icons, filling battery, supplier list, Peak/Off-peak/Shoulder editor
+  with time wheels (`tariffProblem()` checks overlaps), refuse older versions and uploads while
+  the hotspot is open (`TECH_NOTES.md`). None of 0.7.5-0.7.9 tried on the board yet.
 - Offered, not yet agreed: passphrase on the signing key; signing `ota.json` is not needed
   (the version check uses the signed image).
 - Owner's board: on 0.7.x. Updating over Wi-Fi is confirmed working on the real board
@@ -82,7 +84,8 @@ caches `ota.json` for a few minutes). `package.sh` keeps only the two newest `-a
 - `src/ui.cpp`, `src/ui_pages.cpp` LVGL screens; colours come only from the palette in
   `applyPalette()` (3 palettes × dark/light), so new UI must use the `C_*` colours.
 - `sim/` compiles the real UI code on Linux; `sim/sim_main.cpp` stubs net/data/ota
-  (env vars: `SIM_LIGHT`, `SIM_PALETTE`, `SIM_OTA`, `SIM_OTA_PCT`, `SIM_TOU`, `SIM_TIME`, `SIM_AP`).
+  (env vars: `SIM_LIGHT`, `SIM_PALETTE`, `SIM_OTA`, `SIM_OTA_PCT`, `SIM_TOU`, `SIM_TIME`, `SIM_AP`,
+  `SIM_SUPPLIER`, `SIM_FIT`; pages `prices`, `prices-end`, `prices-list` open the price editor).
 
 ## Related repo
 The web dashboard and Node bridge (the original browser version, 800×480 and round layouts)

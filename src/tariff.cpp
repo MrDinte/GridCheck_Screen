@@ -17,20 +17,29 @@ bool themeIsLight(const Settings& s) {
   return !night;
 }
 
+bool inWindow(uint16_t start, uint16_t end, uint8_t days, int m, int wday) {
+  if (start == end) return false;
+  const bool in = start < end ? (m >= start && m < end) : (m >= start || m < end);
+  if (!in) return false;
+  // a window that wraps past midnight belongs to the day it started on
+  const int day = (start > end && m < end) ? (wday + 6) % 7 : wday;
+  const bool weekend = day == 0 || day == 6;
+  if (days == TOU_WEEKDAYS && weekend) return false;
+  if (days == TOU_WEEKENDS && !weekend) return false;
+  return true;
+}
+
 int periodAt(const Tariff& t, int m, int wday) {
   for (int i = 0; i < TOU_MAX; i++) {
     const TouPeriod& p = t.p[i];
-    if (!p.used || p.start == p.end) continue;
-    const bool in = p.start < p.end ? (m >= p.start && m < p.end) : (m >= p.start || m < p.end);
-    if (!in) continue;
-    // a period that wraps past midnight belongs to the day it started on
-    const int day = (p.start > p.end && m < p.end) ? (wday + 6) % 7 : wday;
-    const bool weekend = day == 0 || day == 6;
-    if (p.days == TOU_WEEKDAYS && weekend) continue;
-    if (p.days == TOU_WEEKENDS && !weekend) continue;
-    return i;
+    if (p.used && inWindow(p.start, p.end, p.days, m, wday)) return i;
   }
   return -1;
+}
+
+float sellAt(const Tariff& t, int m, int wday) {
+  if (!t.sellTimed) return t.sell;
+  return inWindow(t.sellStart, t.sellEnd, t.sellDays, m, wday) ? t.sell : t.sellOther;
 }
 
 float priceAt(const Tariff& t, int m, int wday) {
@@ -56,6 +65,7 @@ int minutesUntilChange(const Tariff& t, int m, int wday) {
 std::string tariffProblem(const Tariff& t) {
   for (const auto& p : t.p)
     if (p.used && p.start == p.end) return std::string(p.name) + ": the start and end times are the same.";
+  if (t.sellTimed && t.sellStart == t.sellEnd) return "Feed-in: the start and end times are the same.";
   // periods must not overlap: check every minute of the week
   for (int d = 0; d < 7; d++)
     for (int m = 0; m < 1440; m++) {

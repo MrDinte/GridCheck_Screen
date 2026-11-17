@@ -55,6 +55,9 @@ static Live last;
 
 static uint32_t dateKey(const struct tm& t) { return (t.tm_year + 1900) * 10000 + (t.tm_mon + 1) * 100 + t.tm_mday; }
 
+static uint32_t paidDate = 0;  // the day paidKWh counts
+static float paidKWh = 0;      // kWh exported at the full feed-in rate that day
+
 // ---- files -----------------------------------------------------------------
 static void save() {
   if (!mounted) return;
@@ -73,6 +76,13 @@ static void save() {
     fwrite(ring, sizeof(MinuteSample), MINUTES, f);
     fclose(f);
   }
+  // kWh exported at the full feed-in rate today, for a daily limit (e.g. the first 10 kWh)
+  f = fopen("/data/fit.bin", "wb");
+  if (f) {
+    fwrite(&paidDate, sizeof paidDate, 1, f);
+    fwrite(&paidKWh, sizeof paidKWh, 1, f);
+    fclose(f);
+  }
   lastSaveMs = millis();
 }
 
@@ -85,6 +95,11 @@ static void load() {
       if (hdr[1] && fread(past.data(), sizeof(DayRecord), hdr[1], f) != hdr[1]) past.clear();
       if (fread(&cur, sizeof cur, 1, f) != 1) cur = DayRecord();
     }
+    fclose(f);
+  }
+  f = fopen("/data/fit.bin", "rb");
+  if (f) {
+    if (fread(&paidDate, sizeof paidDate, 1, f) != 1 || fread(&paidKWh, sizeof paidKWh, 1, f) != 1 || !(paidKWh >= 0)) paidDate = 0, paidKWh = 0;
     fclose(f);
   }
   f = fopen("/data/min.bin", "rb");
@@ -209,7 +224,18 @@ void addReading(const Live& l) {
     allocateFlows(last.solar, last.house, last.grid, last.battery, f);
     for (int i = 0; i < FLOW_COUNT; i++) cur.flows[i] += f[i] * h;
     cur.spent += fmaxf(0, last.grid) * h * priceAt(s.tariff, t.tm_hour * 60 + t.tm_min, t.tm_wday) / 100.0f;
-    cur.earned += fmaxf(0, -last.grid) * h * s.tariff.sell / 100.0f;
+    // Feed-in: the full rate (inside its hours, if it has set hours) up to the daily limit, then
+    // the after-the-limit rate; outside its hours, the other-times rate.
+    const Tariff& tf = s.tariff;
+    const float e = fmaxf(0, -last.grid) * h;
+    if (paidDate != key) paidDate = key, paidKWh = 0;
+    if (tf.sellTimed && !inWindow(tf.sellStart, tf.sellEnd, tf.sellDays, t.tm_hour * 60 + t.tm_min, t.tm_wday)) {
+      cur.earned += e * tf.sellOther / 100.0f;
+    } else {
+      const float full = tf.sellCapKWh > 0 ? fminf(e, fmaxf(0, tf.sellCapKWh - paidKWh)) : e;
+      paidKWh += e;
+      cur.earned += (full * tf.sell + (e - full) * tf.sellAfterCap) / 100.0f;
+    }
   }
   lastMs = ms;
   last = l;

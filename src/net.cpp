@@ -87,7 +87,10 @@ static void load() {
   nvs_get_u8(h, "bright", &S.brightness);
   size_t len = sizeof(Tariff);
   Tariff t;
-  if (nvs_get_blob(h, "tou", &t, &len) == ESP_OK && len == sizeof(Tariff)) {
+  // 0.7.8 and earlier saved a shorter Tariff (TariffV1, no feed-in times): the new fields come
+  // after the old ones, so reading the shorter blob into a fresh Tariff keeps their defaults.
+  static_assert(sizeof(TariffV1) <= sizeof(Tariff), "Tariff only grows");
+  if (nvs_get_blob(h, "tou", &t, &len) == ESP_OK && (len == sizeof(Tariff) || len == sizeof(TariffV1))) {
     for (auto& p : t.p) p.name[sizeof p.name - 1] = 0;
     t.baseName[sizeof t.baseName - 1] = 0;
     S.tariff = t;
@@ -376,6 +379,20 @@ static std::string page(const std::string& message, bool good) {
          "<div class=row><div><label for=sell>Feed-in price (c/kWh)</label><input id=sell name=sell inputmode=decimal value='" +
          num(t.sell) + "'></div><div><label for=supply>Supply charge (c/day)</label><input id=supply name=supply inputmode=decimal placeholder='optional' value='" +
          (t.supply > 0 ? num(t.supply) : std::string("")) + "'></div></div>";
+    // feed-in hours and daily limit
+    h += std::string("<div class=chk><input type=checkbox id=fitt name=fitt value=1") + (t.sellTimed ? " checked" : "") +
+         "><label for=fitt style='margin:0'>Feed-in only paid at set times</label></div><div class=row style='grid-template-columns:1fr 1fr 1.3fr'>"
+         "<input type=time name=fts aria-label='feed-in from' value='" + hm(t.sellStart) + "'><input type=time name=fte aria-label='feed-in until' value='" +
+         hm(t.sellEnd) + "'><select name=ftd aria-label='feed-in days'>";
+    {
+      static const char* FDAYS[] = {"Every day", "Weekdays", "Weekends"};
+      for (int d = 0; d < 3; d++) h += "<option value=" + std::to_string(d) + (t.sellDays == d ? " selected" : "") + ">" + FDAYS[d] + "</option>";
+    }
+    h += "</select></div><div class=row style='margin-top:8px'><div><label for=fto>Feed-in at other times (c/kWh)</label><input id=fto name=fto inputmode=decimal value='" +
+         num(t.sellOther) + "'></div><div><label for=fcap>Daily limit (kWh)</label><input id=fcap name=fcap inputmode=decimal placeholder='no limit' value='" +
+         (t.sellCapKWh > 0 ? num(t.sellCapKWh) : std::string("")) + "'></div></div><label for=fafter>Feed-in after the daily limit (c/kWh)</label>"
+         "<input id=fafter name=fafter inputmode=decimal value='" + num(t.sellAfterCap) +
+         "'><p class=help>For example 10c from 16:00 to 21:00 for the first 10 kWh a day, and 0c at other times. Leave the limit empty if your plan has none.</p>";
     h += "<label style='margin-top:16px'>Time of use (optional)</label>"
          "<p class=help style='margin:0 0 8px'>Add a period for each price on your bill, e.g. Off-peak, Shoulder and Peak, or a free window at 0c. "
          "Times can run past midnight (22:00 to 07:00). Clear a period's name and times to remove it.</p><datalist id=tounames>"
@@ -533,6 +550,17 @@ static esp_err_t handleSave(httpd_req_t* req) {
   if (!parseNum("buy", 30, 0, 500, tariff.buy)) return sendPage(req, "400 Bad Request", "Buy price should be a number of cents, e.g. 32.5.", false);
   if (!parseNum("sell", 5, 0, 500, tariff.sell)) return sendPage(req, "400 Bad Request", "Feed-in price should be a number of cents, e.g. 6.", false);
   if (!parseNum("supply", 0, 0, 1000, tariff.supply)) return sendPage(req, "400 Bad Request", "Supply charge should be cents per day, e.g. 110.", false);
+  tariff.sellTimed = hasField(body, "fitt");
+  {
+    uint16_t a = 0, b = 0;
+    const bool times = parseHm(trim(formField(body, "fts")), a) && parseHm(trim(formField(body, "fte")), b) && a != b;
+    if (times) tariff.sellStart = a, tariff.sellEnd = b;
+    else if (tariff.sellTimed) return sendPage(req, "400 Bad Request", "Feed-in: enter the times it's paid, e.g. 16:00 to 21:00.", false);
+  }
+  tariff.sellDays = (uint8_t)constrain(strtol(formField(body, "ftd").c_str(), nullptr, 10), 0L, 2L);
+  if (!parseNum("fto", 0, 0, 500, tariff.sellOther)) return sendPage(req, "400 Bad Request", "Feed-in at other times should be cents per kWh, e.g. 0.", false);
+  if (!parseNum("fcap", 0, 0, 1000, tariff.sellCapKWh)) return sendPage(req, "400 Bad Request", "The feed-in daily limit should be kWh, e.g. 10, or empty for none.", false);
+  if (!parseNum("fafter", 0, 0, 500, tariff.sellAfterCap)) return sendPage(req, "400 Bad Request", "Feed-in after the limit should be cents per kWh, e.g. 0.", false);
   snprintf(tariff.baseName, sizeof tariff.baseName, "%s", trim(formField(body, "bn")).c_str());
   int nPeriods = 0;
   for (int i = 0; i < TOU_MAX; i++) {

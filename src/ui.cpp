@@ -372,18 +372,25 @@ static void buildNow(lv_obj_t* page) {
 // Grid supplier from a list; Peak, Off-peak (and any other periods set on the phone) each with
 // an on/off switch, start and end times, days and a price; Shoulder covers all other times.
 // Prices are typed on a number pad, times picked on hour/minute wheels.
-enum { F_BASE = TOU_MAX, F_SELL, F_SUPPLY, F_COUNT };  // 0..TOU_MAX-1: the time-of-use periods
+enum { F_BASE = TOU_MAX, F_SELL, F_SELL_OTHER, F_SELL_CAP, F_SELL_AFTER, F_SUPPLY, F_COUNT };  // 0..TOU_MAX-1: the periods
 enum { K_PRICE, K_START, K_END };
+static constexpr int T_SELL = TOU_MAX;  // time chips index for the feed-in hours (0..TOU_MAX-1: periods)
 static lv_obj_t *pPanel, *pSupplier, *pEditing, *pHint, *pPad, *pTimeBox, *pHour, *pMin, *pTimeNote, *pBaseName, *pBaseSub, *pSelObj;
 static lv_obj_t *pValBtn[F_COUNT], *pValLbl[F_COUNT];
-static lv_obj_t *pSwitch[TOU_MAX], *pStart[TOU_MAX], *pEnd[TOU_MAX], *pDays[TOU_MAX];
+static lv_obj_t *pSwitch[TOU_MAX + 1], *pStart[TOU_MAX + 1], *pEnd[TOU_MAX + 1], *pDays[TOU_MAX + 1], *pSellName;
 static char pText[F_COUNT][16];
 static int pSel = -1, pKind = K_PRICE;
 static bool pFresh = true;
 static Tariff pDraft;
 static const char* const DAY_NAMES[3] = {"Every day", "Weekdays", "Weekends"};
 
-static const char* priceUnit(int f) { return f == F_SUPPLY ? "c/day" : "c/kWh"; }
+static const char* priceUnit(int f) { return f == F_SUPPLY ? "c/day" : f == F_SELL_CAP ? "kWh a day" : "c/kWh"; }
+
+// start, end and days of a period, or of the feed-in hours (T_SELL)
+static uint16_t& tStart(int i) { return i < TOU_MAX ? pDraft.p[i].start : pDraft.sellStart; }
+static uint16_t& tEnd(int i) { return i < TOU_MAX ? pDraft.p[i].end : pDraft.sellEnd; }
+static uint8_t& tDays(int i) { return i < TOU_MAX ? pDraft.p[i].days : pDraft.sellDays; }
+static const char* timeName(int i) { return i < TOU_MAX ? (pDraft.p[i].name[0] ? pDraft.p[i].name : "Period") : "Feed-in"; }
 
 static bool anyPeriodOn() {
   for (int i = 0; i < TOU_MAX; i++)
@@ -394,18 +401,33 @@ static bool anyPeriodOn() {
 static const char* priceFieldName(int f) {
   if (f < TOU_MAX) return pDraft.p[f].name[0] ? pDraft.p[f].name : "Period";
   if (f == F_BASE) return !anyPeriodOn() ? "Grid price" : pDraft.baseName[0] ? pDraft.baseName : "Shoulder";
-  return f == F_SELL ? "Feed-in" : "Supply charge";
+  switch (f) {
+    case F_SELL: return "Feed-in";
+    case F_SELL_OTHER: return "Feed-in, other times";
+    case F_SELL_CAP: return "Daily limit";
+    case F_SELL_AFTER: return "After the limit";
+    default: return "Supply charge";
+  }
 }
 
+static void dim(lv_obj_t* o, bool on) {
+  lv_obj_set_style_opa(o, on ? LV_OPA_COVER : LV_OPA_40, 0);
+  if (on) lv_obj_clear_state(o, LV_STATE_DISABLED);
+  else lv_obj_add_state(o, LV_STATE_DISABLED);
+}
+
+static bool capSet() { return pText[F_SELL_CAP][0] && strtof(pText[F_SELL_CAP], nullptr) > 0; }
+
 static void showPriceValue(int f) {
-  lv_label_set_text_fmt(pValLbl[f], "%s  #%s %s#", pText[f][0] ? pText[f] : "0", hx(C_MUTED), priceUnit(f));
+  if (f == F_SELL_CAP && !capSet()) lv_label_set_text(pValLbl[f], "No limit");
+  else lv_label_set_text_fmt(pValLbl[f], "%s  #%s %s#", pText[f][0] ? pText[f] : "0", hx(C_MUTED), priceUnit(f));
+  if (f == F_SELL_CAP && pValBtn[F_SELL_AFTER]) dim(pValBtn[F_SELL_AFTER], capSet());
 }
 
 static void showTimes(int i) {
-  const TouPeriod& p = pDraft.p[i];
-  lv_label_set_text_fmt(lv_obj_get_child(pStart[i], 0), "%02u:%02u", p.start / 60, p.start % 60);
-  lv_label_set_text_fmt(lv_obj_get_child(pEnd[i], 0), "%02u:%02u", p.end / 60, p.end % 60);
-  lv_label_set_text(lv_obj_get_child(pDays[i], 0), DAY_NAMES[p.days % 3]);
+  lv_label_set_text_fmt(lv_obj_get_child(pStart[i], 0), "%02u:%02u", tStart(i) / 60, tStart(i) % 60);
+  lv_label_set_text_fmt(lv_obj_get_child(pEnd[i], 0), "%02u:%02u", tEnd(i) / 60, tEnd(i) % 60);
+  lv_label_set_text(lv_obj_get_child(pDays[i], 0), DAY_NAMES[tDays(i) % 3]);
 }
 
 static void showBaseName() {
@@ -440,8 +462,8 @@ static void selectTime(int i, int kind) {
   pSel = i;
   pKind = kind;
   highlight(kind == K_START ? pStart[i] : pEnd[i]);
-  lv_label_set_text_fmt(pEditing, "%s %s at", priceFieldName(i), kind == K_START ? "starts" : "ends");
-  const uint16_t m = kind == K_START ? pDraft.p[i].start : pDraft.p[i].end;
+  lv_label_set_text_fmt(pEditing, "%s %s at", timeName(i), kind == K_START ? "starts" : "ends");
+  const uint16_t m = kind == K_START ? tStart(i) : tEnd(i);
   lv_roller_set_selected(pHour, m / 60, LV_ANIM_OFF);
   lv_roller_set_selected(pMin, (m % 60) / 5, LV_ANIM_OFF);
   showTimeNote(m);
@@ -450,9 +472,9 @@ static void selectTime(int i, int kind) {
 }
 
 static void wheelEvent(lv_event_t*) {
-  if (pSel < 0 || pSel >= TOU_MAX || pKind == K_PRICE) return;
+  if (pSel < 0 || pSel > T_SELL || pKind == K_PRICE) return;
   const uint16_t m = (uint16_t)(lv_roller_get_selected(pHour) * 60 + lv_roller_get_selected(pMin) * 5);
-  (pKind == K_START ? pDraft.p[pSel].start : pDraft.p[pSel].end) = m;
+  (pKind == K_START ? tStart(pSel) : tEnd(pSel)) = m;
   showTimes(pSel);
   showTimeNote(m);
 }
@@ -479,10 +501,13 @@ static void keyEvent(lv_event_t* e) {
 }
 
 static void setPeriodOn(int i, bool on) {
-  for (lv_obj_t* o : {pStart[i], pEnd[i], pDays[i], pValBtn[i]}) {
-    lv_obj_set_style_opa(o, on ? LV_OPA_COVER : LV_OPA_40, 0);
-    if (on) lv_obj_clear_state(o, LV_STATE_DISABLED);
-    else lv_obj_add_state(o, LV_STATE_DISABLED);
+  for (lv_obj_t* o : {pStart[i], pEnd[i], pDays[i]}) dim(o, on);
+  if (i < TOU_MAX) {
+    dim(pValBtn[i], on);
+  } else {
+    // feed-in: the price stays; off means it's paid all day, so "other times" doesn't apply
+    dim(pValBtn[F_SELL_OTHER], on);
+    lv_label_set_text(pSellName, on ? "Feed-in, set hours" : "Feed-in, all day");
   }
 }
 
@@ -499,7 +524,7 @@ static void savePrices(lv_event_t*) {
     if (!pValBtn[f]) continue;
     char* end = nullptr;
     const float v = pText[f][0] ? strtof(pText[f], &end) : 0;
-    const float hi = f == F_SUPPLY ? 1000 : 500;
+    const float hi = f == F_SUPPLY || f == F_SELL_CAP ? 1000 : 500;
     if ((pText[f][0] && (!end || *end)) || v < 0 || v > hi) {
       lv_label_set_text_fmt(pHint, "%s should be between 0 and %.0f %s.", priceFieldName(f), hi, priceUnit(f));
       lv_obj_set_style_text_color(pHint, C_WARN, 0);
@@ -509,10 +534,14 @@ static void savePrices(lv_event_t*) {
     if (f < TOU_MAX) t.p[f].price = v;
     else if (f == F_BASE) t.buy = v;
     else if (f == F_SELL) t.sell = v;
+    else if (f == F_SELL_OTHER) t.sellOther = v;
+    else if (f == F_SELL_CAP) t.sellCapKWh = v;
+    else if (f == F_SELL_AFTER) t.sellAfterCap = v;
     else t.supply = v;
   }
   for (int i = 0; i < TOU_MAX; i++)
     if (pSwitch[i]) t.p[i].used = lv_obj_has_state(pSwitch[i], LV_STATE_CHECKED);
+  t.sellTimed = lv_obj_has_state(pSwitch[T_SELL], LV_STATE_CHECKED);
   if (t.hasPeriods() && !t.baseName[0]) snprintf(t.baseName, sizeof t.baseName, "Shoulder");
   const std::string problem = tariffProblem(t);
   if (!problem.empty()) {
@@ -579,6 +608,7 @@ void openPrices() {
   addStandardPeriods(pDraft);
   for (auto*& o : pValBtn) o = nullptr;
   for (auto*& o : pSwitch) o = nullptr;
+  pSellName = nullptr;
 
   pPanel = plain(lv_layer_top());
   lv_obj_set_size(pPanel, W, board::SCREEN_H);
@@ -700,8 +730,8 @@ void openPrices() {
     for (int k = 0; k < n; k++) seen = seen || order[k] == i;
     if (!seen && pDraft.p[i].used) order[n++] = i;
   }
-  for (int k = 0; k < n; k++) {
-    const int i = order[k];
+  // a row with an on/off switch, start and end times, days and a price: a period, or the feed-in hours
+  auto timedRow = [&](int i, const char* name, bool on, int field, float price) {
     lv_obj_t* r = row(92);
     pSwitch[i] = lv_switch_create(r);
     lv_obj_set_size(pSwitch[i], 54, 30);
@@ -711,13 +741,13 @@ void openPrices() {
     // light knob on either theme: white on dark screens, the (white) background on light ones
     lv_obj_set_style_bg_color(pSwitch[i], lv_color_brightness(C_BG) > 128 ? C_BG : C_INK, LV_PART_KNOB);
     lv_obj_set_ext_click_area(pSwitch[i], 10);
-    if (pDraft.p[i].used) lv_obj_add_state(pSwitch[i], LV_STATE_CHECKED);
+    if (on) lv_obj_add_state(pSwitch[i], LV_STATE_CHECKED);
     lv_obj_add_event_cb(pSwitch[i], [](lv_event_t* e) {
       const int i = (int)(intptr_t)lv_event_get_user_data(e);
       setPeriodOn(i, lv_obj_has_state(pSwitch[i], LV_STATE_CHECKED));
       showBaseName();
     }, LV_EVENT_VALUE_CHANGED, (void*)(intptr_t)i);
-    lv_obj_t* nm = label(r, &lv_font_montserrat_20, C_INK, pDraft.p[i].name);
+    lv_obj_t* nm = label(r, &lv_font_montserrat_20, C_INK, name);
     lv_obj_set_pos(nm, 68, 13);
 
     pStart[i] = pill(r, 86, 34, &lv_font_montserrat_18);
@@ -734,22 +764,39 @@ void openPrices() {
                         LV_EVENT_CLICKED, (void*)(intptr_t)i);
     lv_obj_add_event_cb(pDays[i], [](lv_event_t* e) {
       const int i = (int)(intptr_t)lv_event_get_user_data(e);
-      pDraft.p[i].days = (uint8_t)((pDraft.p[i].days + 1) % 3);
+      tDays(i) = (uint8_t)((tDays(i) + 1) % 3);
       showTimes(i);
     }, LV_EVENT_CLICKED, (void*)(intptr_t)i);
     showTimes(i);
-    priceBtn(r, i, pDraft.p[i].price);
+    priceBtn(r, field, price);
+    return nm;
+  };
+  for (int k = 0; k < n; k++) {
+    const int i = order[k];
+    timedRow(i, pDraft.p[i].name, pDraft.p[i].used, i, pDraft.p[i].price);
     setPeriodOn(i, pDraft.p[i].used);
   }
 
-  // Shoulder (or a single price when no periods are on), feed-in and supply
+  // Shoulder (or a single price when no periods are on)
   r = row(64);
   nameSub(r, "", "", &pBaseName, &pBaseSub);
   priceBtn(r, F_BASE, pDraft.buy);
   showBaseName();
+
+  // feed-in: all day, or only at set hours (with a price for other times), and an optional daily limit
+  pSellName = timedRow(T_SELL, "", pDraft.sellTimed, F_SELL, pDraft.sell);
   r = row(64);
-  nameSub(r, "Feed-in", "paid for power you send to the grid");
-  priceBtn(r, F_SELL, pDraft.sell);
+  nameSub(r, "Feed-in, other times", "outside the hours above");
+  priceBtn(r, F_SELL_OTHER, pDraft.sellOther);
+  setPeriodOn(T_SELL, pDraft.sellTimed);
+  r = row(64);
+  nameSub(r, "Daily limit", "kWh a day paid at the feed-in price");
+  priceBtn(r, F_SELL_CAP, pDraft.sellCapKWh);
+  r = row(64);
+  nameSub(r, "After the limit", "feed-in once the limit is reached");
+  priceBtn(r, F_SELL_AFTER, pDraft.sellAfterCap);
+  showPriceValue(F_SELL_CAP);  // dims "after the limit" when there's no limit
+
   r = row(64);
   nameSub(r, "Supply charge", "daily charge on your bill");
   priceBtn(r, F_SUPPLY, pDraft.supply);
@@ -907,9 +954,9 @@ static void buildInfo(lv_obj_t* page) {
   lv_label_set_recolor(iPrice, true);
   // room for Peak, Shoulder, Off-peak and feed-in; the caption also names the supplier
   lv_obj_set_style_text_font(iPrice, &lv_font_montserrat_20, 0);
-  lv_obj_set_width(iPrice, 590);
+  lv_obj_set_width(iPrice, 650);
   lv_obj_t* priceCap = lv_obj_get_child(lv_obj_get_parent(iPrice), 0);
-  lv_obj_set_width(priceCap, 300);
+  lv_obj_set_width(priceCap, 245);
   lv_label_set_long_mode(priceCap, LV_LABEL_LONG_DOT);
   lv_obj_t* priceRow = lv_obj_get_parent(iPrice);
   lv_obj_add_flag(priceRow, LV_OBJ_FLAG_CLICKABLE);
@@ -1138,7 +1185,23 @@ void update() {
     addNamed("Peak");
     add(tf.hasPeriods() ? periodName(tf, -1) : "Grid", tf.buy);
     addNamed("Off-peak");
-    add("Feed-in", tf.sell);
+    if (k <= sizeof sum - 40) {
+      // "Feed-in 10c 4-9pm" (the daily limit is in the editor; it doesn't fit here)
+      auto t12 = [](char* b, size_t n, uint16_t m, bool suffix) {
+        const int h = (m / 60 + 11) % 12 + 1;
+        const char* ap = suffix ? (m < 720 ? "am" : "pm") : "";
+        if (m % 60) snprintf(b, n, "%d:%02d%s", h, m % 60, ap);
+        else snprintf(b, n, "%d%s", h, ap);
+      };
+      priceText(pr, sizeof pr, tf.sell);
+      k += snprintf(sum + k, sizeof sum - k, "%sFeed-in %s", k ? "  " : "", pr);
+      if (tf.sellTimed) {
+        char a[10], b[10];
+        t12(a, sizeof a, tf.sellStart, (tf.sellStart < 720) != (tf.sellEnd < 720));  // "4-9pm", "10pm-7am"
+        t12(b, sizeof b, tf.sellEnd, true);
+        k += snprintf(sum + k, sizeof sum - k, " %s-%s", a, b);
+      }
+    }
     for (int i = 0; i < TOU_MAX; i++)
       if (tf.p[i].used && !shown[i]) add(tf.p[i].name, tf.p[i].price);
     if (!tf.set) lv_label_set_text_fmt(iPrice, "#%s Tap to enter your supplier and prices#", hx(C_PINK));

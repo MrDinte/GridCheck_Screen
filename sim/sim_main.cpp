@@ -138,6 +138,9 @@ int main(int argc, char** argv) {
       P(S.tariff.p[2], "Peak", 15 * 60, 21 * 60, TOU_WEEKDAYS, 52);
     }
   }
+  if (getenv("SIM_FIT")) {  // feed-in 10c from 16:00 to 21:00 for the first 10 kWh a day, 0c otherwise
+    S.tariff.sellTimed = true; S.tariff.sellStart = 16 * 60; S.tariff.sellEnd = 21 * 60; S.tariff.sellCapKWh = 10; S.tariff.sell = 10;
+  }
   makeHistory(time(nullptr));
   const char* scene = argc > 1 ? argv[1] : "day";
   L.ok = true; L.updatedMs = fakeMs;
@@ -164,6 +167,12 @@ int main(int argc, char** argv) {
     }
   }
   if (argc > 2 && !strcmp(argv[2], "prices")) { ui::showPage(7); ui::openPrices(); }
+  if (argc > 2 && !strcmp(argv[2], "prices-end")) {  // scrolled down to feed-in and supply
+    ui::showPage(7); ui::openPrices();
+    lv_obj_t* col = lv_obj_get_child(lv_obj_get_child(lv_layer_top(), 0), 3);
+    lv_obj_update_layout(col);
+    lv_obj_scroll_to_y(col, LV_COORD_MAX, LV_ANIM_OFF);
+  }
   if (argc > 2 && !strcmp(argv[2], "prices-list")) {  // supplier list open
     ui::showPage(7); ui::openPrices();
     lv_obj_t* dd = lv_obj_get_child(lv_obj_get_child(lv_obj_get_child(lv_layer_top(), 0), 3), 0);
