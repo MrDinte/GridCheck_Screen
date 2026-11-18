@@ -485,7 +485,7 @@ static std::string page(const std::string& message, bool good) {
        esc(s.tsHome) + "'><div class=kv><span>Status</span><b>" + esc(vpn::status()) +
        "</b></div><p class=help>The home device passes Modbus on to the inverter: on Home Assistant, the <b>Modbus Proxy</b> and "
        "<b>Tailscale</b> add-ons. At home the screen reads the inverter directly as usual; when it can't, it reads through "
-       "Tailscale. Make a key in the Tailscale admin console (Settings, Keys: not ephemeral, pre-approved), and once the screen "
+       "Tailscale. Make a key in the Tailscale admin console (Settings, Keys: reusable, not ephemeral, pre-approved), and once the screen "
        "shows up as <b>gridcheck-knob</b>, turn off <b>key expiry</b> for it. The key is kept on the screen and never shown here.</p></div>";
 #endif
   h += "<div class=card><h2>Firmware</h2><div class=kv><span>On this screen</span><b>" EH_VERSION "</b></div>"

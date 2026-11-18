@@ -71,7 +71,7 @@ The round screen can come with you: when it can't reach the inverter on the netw
 
 1. **Modbus Proxy add-on.** In Home Assistant: Settings, Add-ons, Add-on store, the ⋮ menu, Repositories: add `https://github.com/Akulatraxas/ha-modbusproxy`. Install **Modbus Proxy**; in its Configuration set the upstream host to your inverter's IP address and the upstream port to 502, leave it listening on port 502, and start it. (The inverter only takes a few Modbus connections, so if readings drop out, point Home Assistant's own Sigenergy integration and the screens at the proxy too.)
 2. **Tailscale add-on.** Install **Tailscale** from the add-on store, start it, open its web UI and log in. Note its name in the [Tailscale admin console](https://login.tailscale.com/admin/machines) (for example `homeassistant`).
-3. **A key for the screen.** In the admin console: Settings, Keys, **Generate auth key**: one-off (not reusable), not ephemeral, pre-approved. Copy it.
+3. **A key for the screen.** In the admin console: Settings, Keys, **Generate auth key**: **reusable**, not ephemeral, pre-approved. Copy it. (It must be reusable: the screen presents it again each time it starts, and a one-off key is refused after its first use.)
 4. **On the screen's phone page,** under **Away from home (Tailscale)**: tick the box, paste the key, type Home Assistant's Tailscale name (or its 100.x address) and Save. The status line says when it's connected.
 5. Away from home, give the screen the local Wi-Fi with **Change Wi-Fi** on its Settings page (or wait: it opens the setup hotspot by itself when it can't find its Wi-Fi).
 6. In the admin console, find **gridcheck-knob**, open its ⋯ menu and **Disable key expiry**, so it doesn't need a new key in a few months.

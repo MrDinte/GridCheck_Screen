@@ -113,8 +113,10 @@ when it's away (see README, "Away from home with Tailscale"). What that means fo
   and allow that tag only `tcp:502` on the home device (example in the README).
 - **The auth key is stored on the screen** (in its settings memory, like the Wi-Fi password)
   and is never shown on the phone page. Anyone holding the screen could read it out over USB.
-  Use a key that is pre-approved and not reusable, and if the screen is lost, remove
-  **gridcheck-knob** from the Tailscale admin console: that cuts it off at once.
+  The key has to be reusable (the screen presents it again each time it starts), so treat it
+  like a password: give it a tag limited to `tcp:502` on the home device (see the README), and
+  if the screen is lost, revoke the key and remove **gridcheck-knob** from the Tailscale admin
+  console: that cuts it off at once.
 - **Reset all settings** also wipes the screen's Tailscale identity.
 - Modbus has no password, so anyone who can reach the proxy can read (and, through the proxy,
   write) inverter registers. Keep the proxy off the internet; reaching it over Tailscale is

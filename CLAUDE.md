@@ -25,6 +25,11 @@ addresses, emails or keys.
   setup hotspot now (`net::openSetupHotspot()`, closes on Close / after 10 min / on save) with a
   QR code (`LV_USE_QRCODE` on; QR is black on white on purpose). On the board the QR vanished
   after ~1 s (it was only marked open after the network scan); 0.8.3 marks it open at once.
+- Tailscale auth key must be **reusable**: MicroLink sends the AuthKey in every RegisterRequest
+  (ml_coord.c), so a one-off key is refused after the first start (owner hit this: knob showed
+  offline after moving to the iPhone hotspot). Docs fixed; the phone-page hint changes in the
+  next release. iPhone hotspot needs "Maximize Compatibility" (2.4 GHz) and the Personal
+  Hotspot screen open while the knob joins.
 - 0.8.0/0.8.1: The round knob screen (0.8.0) **works on the owner's
   board** (installed from the install page; USB plug must be the right way up for the S3).
 - 0.8.1 adds **Tailscale on the knob** (`src/vpn.*`, MicroLink in `components/microlink`,
