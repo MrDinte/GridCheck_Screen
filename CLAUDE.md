@@ -25,8 +25,11 @@ addresses, emails or keys.
 - 0.7.5-0.7.9 (7"): tappable Now icons, filling battery, supplier list, Peak/Off-peak/Shoulder
   editor with time wheels, feed-in at set hours with a daily limit (owner: 10c 16:00-21:00 for
   the first 10 kWh, 0c otherwise), refuse older versions, `TECH_NOTES.md`. Not yet tried on the board.
-- Asked about remote access / Tailscale (answered: Tailscale subnet router at home; the ESP32
-  can't run Tailscale itself). Nothing built for it.
+- Parked for later (owner's request): remote access with Tailscale on the screen itself, using
+  microlink, a community Tailscale client for ESP32 (https://osrtos.com/projects/microlink-tailscale-vpn-for-esp32/).
+  Not looked at yet: check its licence, ESP-IDF version, RAM/flash needs (TLS + WireGuard on top
+  of LVGL; internal RAM is already tight on the 7") and how it authenticates. Until then the
+  answer is a Tailscale subnet router at home. Nothing built.
 - Offered, not yet agreed: passphrase on the signing key; signing `ota.json` is not needed
   (the version check uses the signed image).
 - Owner's board: on 0.7.x. Updating over Wi-Fi is confirmed working on the real board
