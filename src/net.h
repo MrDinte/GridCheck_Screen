@@ -113,6 +113,8 @@ Settings settings();
 /** Bumped every time settings are saved, so the inverter task can reconnect. */
 uint32_t settingsVersion();
 bool apMode();             // setup hotspot is running
+/** Why Wi-Fi isn't working, in plain words ("Wrong Wi-Fi password"), or "" (connected, or just trying). */
+std::string wifiProblem(bool brief);
 /** "Change Wi-Fi" on the screen: open the setup hotspot now (it closes after 10 minutes,
  *  on closeSetupHotspot(), or when new Wi-Fi is saved and the screen restarts). */
 void openSetupHotspot();

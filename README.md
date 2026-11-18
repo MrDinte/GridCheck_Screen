@@ -116,6 +116,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.8.5**: the screens say why Wi-Fi isn't working ("Can't find TimiPhone", "Wrong Wi-Fi password") and join a network whose name only differs in its apostrophes (an iPhone's "Tim’s iPhone"). The round screen shows what Tailscale is doing when it can't read the inverter ("Tailscale: key rejected", "Home not answering").
 - **0.8.4**: a **This screen** page on the round screen: its own battery, brightness (− / +), dimming, Wi-Fi signal. Saving a setting no longer blanks the readings for a moment (both screens).
 - **0.8.2-0.8.3**: **Change Wi-Fi** on the round screen's Settings page opens its setup hotspot at once, with a QR code for your phone that stays up until you press Close, save new Wi-Fi, or 10 minutes pass. No change on the 7" screen.
 - **0.8.1**: **Away from home with Tailscale** on the round screen: it reads the inverter through Home Assistant (Modbus Proxy and Tailscale add-ons) when it can't reach it directly, and shows **via Tailscale**. Set it up on the phone page. No change on the 7" screen.

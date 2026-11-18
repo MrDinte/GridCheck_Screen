@@ -40,6 +40,8 @@ static volatile bool ap = false, apBecauseNoWifi = false, haveIp = false;
 // "Change Wi-Fi" on the screen: open the setup hotspot now, even while on Wi-Fi
 static volatile bool apByHand = false, openRequested = false, closeRequested = false;
 static uint32_t apOpenedMs = 0;
+// why the last Wi-Fi attempt failed (ESP-IDF disconnect reason; 0 = none / connected)
+static volatile uint8_t lastReason = 0;
 static constexpr uint32_t AP_BY_HAND_MS = 10 * 60 * 1000;  // closes itself after 10 minutes
 static char ipStr[16] = "";
 static uint32_t staStartMs = 0, connectedSinceMs = 0;
@@ -68,9 +70,11 @@ void openSetupHotspot() {
 void closeSetupHotspot() { closeRequested = true; }
 bool setupHotspotByHand() { return apByHand; }
 bool connected() { return haveIp; }
+static std::string plainQuotes(const std::string& in);
 std::string ssidInUse() {
   wifi_ap_record_t info;
-  if (haveIp && esp_wifi_sta_get_ap_info(&info) == ESP_OK) return std::string((const char*)info.ssid);
+  // for the screen, whose fonts have no curly quotes ("Tim’s iPhone" -> "Tim's iPhone")
+  if (haveIp && esp_wifi_sta_get_ap_info(&info) == ESP_OK) return plainQuotes(std::string((const char*)info.ssid));
   return "";
 }
 std::string address() {
@@ -939,7 +943,13 @@ static void dnsTask(void*) {
 // ---- Wi-Fi -----------------------------------------------------------------
 static void scan() {
   wifi_scan_config_t sc = {};
-  if (esp_wifi_scan_start(&sc, true) != ESP_OK) return;
+  // may be refused while a connection attempt is under way: try a few times
+  bool ok = false;
+  for (int i = 0; i < 4 && !ok; i++) {
+    ok = esp_wifi_scan_start(&sc, true) == ESP_OK;
+    if (!ok) vTaskDelay(pdMS_TO_TICKS(700));
+  }
+  if (!ok) return;
   uint16_t n = 20;
   wifi_ap_record_t recs[20];
   esp_wifi_scan_get_ap_records(&n, recs);
@@ -973,11 +983,61 @@ static void stopAP() {
   ESP_LOGI(TAG, "setup hotspot closed");
 }
 
+static bool noApReason(uint8_t r) {
+  return r == WIFI_REASON_NO_AP_FOUND || r == WIFI_REASON_NO_AP_FOUND_W_COMPATIBLE_SECURITY ||
+         r == WIFI_REASON_NO_AP_FOUND_IN_AUTHMODE_THRESHOLD || r == WIFI_REASON_NO_AP_FOUND_IN_RSSI_THRESHOLD;
+}
+
+/** "Tim’s iPhone" and "Tim's iPhone" are the same network to a person: compare without quote styles. */
+static std::string plainQuotes(const std::string& in) {
+  std::string o;
+  for (size_t i = 0; i < in.size(); i++) {
+    const unsigned char c = in[i];
+    if (c == 0xE2 && i + 2 < in.size() && (unsigned char)in[i + 1] == 0x80) {
+      const unsigned char d = in[i + 2];
+      if (d == 0x98 || d == 0x99) { o += '\''; i += 2; continue; }
+      if (d == 0x9C || d == 0x9D) { o += '"'; i += 2; continue; }
+    }
+    if (c == 0xCA && i + 1 < in.size() && (unsigned char)in[i + 1] == 0xBC) { o += '\''; i++; continue; }
+    o += (char)c;
+  }
+  while (!o.empty() && o.back() == ' ') o.pop_back();
+  return o;
+}
+
+std::string wifiProblem(bool brief) {
+  const uint8_t r = lastReason;
+  std::string ssid;
+  {
+    std::lock_guard<std::mutex> g(lock);
+    ssid = S.ssid;
+  }
+  if (haveIp || !r || ssid.empty()) return "";
+  // short enough for the round screen's status line (brief) or beside the 7" hint
+  // (the screen's fonts have no curly quotes; cut on a whole character)
+  ssid = plainQuotes(ssid);
+  const size_t max = brief ? 16 : 20;
+  if (ssid.size() > max) {
+    size_t cut = max - 1;
+    while (cut > 0 && ((unsigned char)ssid[cut] & 0xC0) == 0x80) cut--;
+    ssid = ssid.substr(0, cut) + "...";
+  }
+  if (noApReason(r)) return brief ? "Can't find " + ssid : "Can't find Wi-Fi \"" + ssid + "\"";
+  if (r == WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT || r == WIFI_REASON_HANDSHAKE_TIMEOUT || r == WIFI_REASON_AUTH_FAIL ||
+      r == WIFI_REASON_MIC_FAILURE)
+    return "Wrong Wi-Fi password";
+  if (r == WIFI_REASON_ASSOC_FAIL || r == WIFI_REASON_CONNECTION_FAIL || r == WIFI_REASON_AUTH_EXPIRE)
+    return brief ? ssid + " won't let it join" : "\"" + ssid + "\" won't let the screen join";
+  return "";  // other reasons: "Joining Wi-Fi..." as before
+}
+
 static void onEvent(void*, esp_event_base_t base, int32_t id, void* data) {
   if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
     if (!settings().ssid.empty()) esp_wifi_connect();
   } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
+    lastReason = ((wifi_event_sta_disconnected_t*)data)->reason;
     if (haveIp) ESP_LOGW(TAG, "Wi-Fi lost, reconnecting");
+    else ESP_LOGW(TAG, "can't join Wi-Fi (reason %u)", (unsigned)lastReason);
     if (haveIp) staStartMs = millis();
     haveIp = false;
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -986,6 +1046,7 @@ static void onEvent(void*, esp_event_base_t base, int32_t id, void* data) {
     auto* e = (ip_event_got_ip_t*)data;
     snprintf(ipStr, sizeof ipStr, IPSTR, IP2STR(&e->ip_info.ip));
     haveIp = true;
+    lastReason = 0;
     connectedSinceMs = millis();
     ESP_LOGI(TAG, "connected: %s", ipStr);
     if (!sntpStarted) {
@@ -999,6 +1060,31 @@ static void onEvent(void*, esp_event_base_t base, int32_t id, void* data) {
 static void watchTask(void*) {
   for (;;) {
     const Settings s = settings();
+    // Can't find the network? If one nearby has the same name apart from the apostrophes
+    // (an iPhone's "Tim’s iPhone" typed as "Tim's iPhone"), use that one.
+    static std::string quoteChecked;
+    if (!haveIp && !s.ssid.empty() && noApReason(lastReason) && quoteChecked != s.ssid && millis() - staStartMs > 15000) {
+      quoteChecked = s.ssid;
+      scan();
+      std::string match;
+      {
+        std::lock_guard<std::mutex> g(lock);
+        for (const auto& n : networks)
+          if (n != S.ssid && plainQuotes(n) == plainQuotes(S.ssid)) match = n;
+        if (!match.empty()) {
+          ESP_LOGI(TAG, "using Wi-Fi \"%s\" for \"%s\"", match.c_str(), S.ssid.c_str());
+          S.ssid = match;
+          save();
+        }
+      }
+      if (!match.empty()) {
+        wifi_config_t c = {};
+        esp_wifi_get_config(WIFI_IF_STA, &c);
+        snprintf((char*)c.sta.ssid, sizeof c.sta.ssid, "%s", match.c_str());
+        esp_wifi_set_config(WIFI_IF_STA, &c);
+        esp_wifi_connect();
+      }
+    }
     // Couldn't join for 45 s: open the setup hotspot too, so it can be fixed from a phone.
     if (!haveIp && !ap && !s.ssid.empty() && millis() - staStartMs > 45000) {
       scan();

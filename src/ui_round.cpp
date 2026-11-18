@@ -8,6 +8,7 @@
 #include "ui.h"
 #include "board.h"
 #include "ui_common.h"
+#include "vpn.h"
 
 #ifndef EH_VERSION
 #define EH_VERSION "0.0.0"
@@ -36,7 +37,7 @@ static lv_obj_t *xAddr, *xWifi, *xPal, *xTheme, *xFw, *xReset;
 // "Change Wi-Fi": the setup hotspot is open; a QR code for the phone to join it
 static lv_obj_t* wifiBox;
 // This screen
-static lv_obj_t *dBatt, *dBattSub, *dBright, *dDim, *dWifi, *dUp;
+static lv_obj_t *dBatt, *dBattSub, *dBright, *dDim, *dWifi, *dTs, *dUp;
 static uint32_t installAskedAt = 0;
 
 static constexpr int BATT_W = 112, BATT_H = 54, BATT_PAD = 5, BATT_BORDER = 5;
@@ -312,8 +313,9 @@ static void roundScreen(lv_obj_t* t) {
     while (i < 5 && DIM_CHOICES[i] != cur) i++;
     net::setDimAfter(DIM_CHOICES[(i + 1) % 5]);
   });
-  dWifi = centred(t, &lv_font_montserrat_14, C_MUTED, 226);
-  dUp = centred(t, &lv_font_montserrat_14, C_MUTED, 248);
+  dWifi = centred(t, &lv_font_montserrat_14, C_MUTED, 222);
+  dTs = centred(t, &lv_font_montserrat_14, C_MUTED, 242);
+  dUp = centred(t, &lv_font_montserrat_14, C_MUTED, 262);
 }
 
 static void updateScreenPage(const Settings& s) {
@@ -333,7 +335,9 @@ static void updateScreenPage(const Settings& s) {
   if (s.dimAfterMin) lv_label_set_text_fmt(dDim, "Dim after %u min", s.dimAfterMin);
   else lv_label_set_text(dDim, "Screen always on");
   const int rssi = net::wifiRssi();
-  if (!rssi) lv_label_set_text(dWifi, "Wi-Fi: not connected");
+  lv_label_set_text(dTs, vpn::brief().c_str());
+  const std::string why = net::wifiProblem(true);
+  if (!rssi) lv_label_set_text_fmt(dWifi, "Wi-Fi: %s", why.empty() ? "not connected" : why.c_str());
   else lv_label_set_text_fmt(dWifi, "Wi-Fi signal: %s (%d dBm)", rssi > -60 ? "good" : rssi > -72 ? "fair" : "weak", rssi);
   const uint32_t up = millis() / 60000;
   if (up < 60) lv_label_set_text_fmt(dUp, "On for %lu min", (unsigned long)up);
@@ -481,7 +485,13 @@ void update() {
   }
 
   // status line (the Settings page has no room for it)
-  const StatusNow stat = statusNow(l, s, true);
+  StatusNow stat = statusNow(l, s, true);
+  // Can't read the inverter while Tailscale is on: say what Tailscale is doing instead
+  if (net::connected() && !fresh && s.tsOn && !s.demo && s.host.length()) {
+    const std::string ts = vpn::brief();
+    if (l.remote) snprintf(stat.text, sizeof stat.text, "Home not answering (proxy?)");
+    else if (!ts.empty() && ts != "Tailscale: connected") snprintf(stat.text, sizeof stat.text, "%s", ts.c_str());
+  }
   lv_label_set_text(statusLbl, stat.text);
   lv_obj_set_style_text_color(statusLbl, stat.color, 0);
   lv_obj_set_style_bg_color(statusDot, stat.color, 0);

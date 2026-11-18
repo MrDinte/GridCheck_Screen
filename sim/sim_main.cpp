@@ -69,6 +69,10 @@ DayRecord today() { return dayv.back(); }
 Forecast forecast() { Forecast f; f.ok = true; f.fromWeather = true; f.today = 31.6f; f.tomorrow = 27.9f; return f; }
 uint32_t version() { return 1; }
 }
+namespace vpn {
+// SIM_TS="Tailscale: key rejected" etc. (round screen)
+std::string brief() { return std::getenv("SIM_TS") ? std::getenv("SIM_TS") : ""; }
+}
 namespace board {
 // SIM_BATT=<volts> for the round screen's own battery (default 3.95 V)
 float batteryVolts() { return std::getenv("SIM_BATT") ? (float)atof(std::getenv("SIM_BATT")) : 3.95f; }
@@ -77,6 +81,8 @@ namespace net {
 Settings settings() { return S; }
 uint32_t settingsVersion() { return 1; }
 bool apMode() { return std::getenv("SIM_AP") != nullptr; }
+// SIM_WIFIERR="Wrong Wi-Fi password" etc.
+std::string wifiProblem(bool) { return std::getenv("SIM_WIFIERR") ? std::getenv("SIM_WIFIERR") : ""; }
 bool connected() { return !apMode(); }
 std::string address() { return apMode() ? std::string("Join Wi-Fi \"GridCheck-Setup\"") : std::string("http://192.168.1.77/"); }
 std::string ssidInUse() { return "HomeWiFi"; }
@@ -162,7 +168,8 @@ int main(int argc, char** argv) {
   if (!strcmp(scene, "error")) { L = Live(); L.ok = false; L.updatedMs = 1; strcpy(L.error, "the inverter hung up while reading 30005 from unit 247. Is another device (e.g. Home Assistant) connected to it?"); }
   if (!strcmp(scene, "setup")) { L = Live(); S.host = ""; }
 
-  if (getenv("SIM_REMOTE")) L.remote = true;  // round screen reading through Tailscale
+  if (getenv("SIM_REMOTE")) L.remote = true;
+  if (getenv("SIM_TS")) S.tsOn = true;  // round screen reading through Tailscale
   if (getenv("SIM_PALETTE")) S.palette = atoi(getenv("SIM_PALETTE"));
   if (getenv("SIM_LIGHT")) S.theme = 1;
   if (getenv("SIM_PALETTE") || getenv("SIM_LIGHT")) ui::applyPalette(S.palette, S.theme == 1);

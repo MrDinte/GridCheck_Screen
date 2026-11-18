@@ -54,6 +54,17 @@ std::string status() {
   return r;
 }
 
+std::string brief() {
+  std::lock_guard<std::mutex> g(lock);
+  const Settings s = net::settings();
+  if (!s.tsOn) return "";
+  if (s.tsKey.empty()) return "Tailscale: no key saved";
+  if (authFailed) return "Tailscale: key rejected";
+  if (!ml || microlink_get_state(ml) != ML_STATE_CONNECTED) return "Tailscale: connecting...";
+  if (s.tsHome.empty()) return "Tailscale: home device not set";
+  return homeIp() ? "Tailscale: connected" : "Tailscale: home not found";
+}
+
 static void onState(microlink_t*, microlink_state_t st, void*) {
   if (st == ML_STATE_AUTH_FAILED) authFailed = true;
   if (st == ML_STATE_CONNECTED) authFailed = false;

@@ -13,8 +13,10 @@ namespace vpn {
 void begin();
 /** On the tailnet and the home device is known. */
 bool ready();
-/** For the phone page and the screen: "connected as 100.x.y.z", "off", "key rejected"... */
+/** For the phone page: "connected as 100.x.y.z", "off", "the auth key was rejected..." */
 std::string status();
+/** Short, for the round screen: "Tailscale: connected", "Tailscale: key rejected"; "" when off. */
+std::string brief();
 
 // A TCP connection to the home device over the tailnet (for Modbus).
 void* tcpConnect(uint16_t port, uint32_t timeoutMs, std::string& err);

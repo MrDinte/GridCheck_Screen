@@ -117,7 +117,9 @@ StatusNow statusNow(const Live& l, const Settings& s, bool brief) {
   } else if (!s.demo && !s.host.length()) {
     put(C_OK, "%s", "Not set up yet");
   } else if (!net::connected() && !s.demo) {
-    put(C_MUTED, "%s", net::apMode() ? (brief ? "Can't join Wi-Fi" : "Can't join Wi-Fi - fix it from your phone") : "Joining Wi-Fi...");
+    const std::string why = net::wifiProblem(brief);
+    if (!why.empty()) put(C_WARN, "%s", why.c_str());
+    else put(C_MUTED, "%s", net::apMode() ? (brief ? "Can't join Wi-Fi" : "Can't join Wi-Fi - fix it from your phone") : "Joining Wi-Fi...");
   } else if (!fresh) {
     put(C_MUTED, "%s", l.updatedMs ? (brief ? "Can't reach inverter" : "Can't reach inverter - swipe for details") : "Connecting to inverter...");
   } else if (tou.on && tou.free) {
