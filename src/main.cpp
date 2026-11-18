@@ -1,7 +1,8 @@
-// GridCheck firmware for the Waveshare ESP32-S3-Touch-LCD-7B (ESP-IDF 5).
+// GridCheck firmware for the Waveshare ESP32-S3-Touch-LCD-7B and the round
+// ESP32-S3-Knob-Touch-LCD-1.8 / 1.8B (ESP-IDF 5).
 //
 // Reads a Sigenergy system over Modbus TCP on your Wi-Fi and shows it on the
-// 7" screen. Settings are changed from a phone (see net.h).
+// screen. Settings are changed from a phone (see net.h).
 
 #include <mutex>
 
@@ -85,6 +86,16 @@ static void flush(lv_disp_drv_t* drv, const lv_area_t* a, lv_color_t* px) {
   lv_disp_flush_ready(drv);
 }
 
+#ifdef GC_KNOB18
+// The round panel takes areas that start on an even pixel and are an even number wide and high.
+static void evenArea(lv_disp_drv_t*, lv_area_t* a) {
+  a->x1 &= ~1;
+  a->y1 &= ~1;
+  a->x2 |= 1;
+  a->y2 |= 1;
+}
+#endif
+
 // ---- screen dimming -------------------------------------------------------------
 static volatile uint32_t lastTouchMs = 0;
 static bool dimmed = false;
@@ -126,6 +137,9 @@ static void uiTask(void*) {
   disp.ver_res = board::SCREEN_H;
   disp.flush_cb = flush;
   disp.draw_buf = &buf;
+#ifdef GC_KNOB18
+  disp.rounder_cb = evenArea;
+#endif
   lv_disp_drv_register(&disp);
 
   static lv_indev_drv_t indev;
@@ -145,6 +159,12 @@ static void uiTask(void*) {
   uint32_t lastUi = 0;
   for (;;) {
     const uint32_t wait = lv_timer_handler();
+    // Turning the knob changes page; like a touch, it also wakes a dimmed screen (that first turn only wakes it).
+    if (const int turns = board::knobTurns()) {
+      if (!dimmed) ui::knob(turns);
+      lastTouchMs = millis();
+      dimmed = false;
+    }
     if (millis() - lastUi > 500) {
       lastUi = millis();
       const Settings s = net::settings();

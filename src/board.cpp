@@ -38,6 +38,7 @@ static bool expander_ok = false, touch_ok = false;
 static uint8_t gtAddr = GT911_ADDR_A;
 
 bool expanderFound() { return expander_ok; }
+int knobTurns() { return 0; }  // no knob on the 7"
 bool touchFound() { return touch_ok; }
 
 // ---- I2C helpers -------------------------------------------------------------

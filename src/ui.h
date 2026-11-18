@@ -7,6 +7,8 @@ void create();
 void update();
 /** Jump to a page (0 = Now, 1 = Settings & info). */
 void showPage(int page);
+/** Turn the knob: + clockwise (next page), - anticlockwise. The 7" has no knob. */
+void knob(int clicks);
 /** Rebuild every page (after the colours change). */
 void rebuild();
 /** Open the power prices editor (from Settings & info; also used by the PC renderer). */

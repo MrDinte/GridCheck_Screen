@@ -8,3 +8,4 @@
 | [Font Awesome Free](https://fontawesome.com) 5 (via LVGL) | icons in `src/fonts/eh_icons_44.c` | SIL Open Font License 1.1 (fonts), CC BY 4.0 (icons) |
 | [ESP Web Tools](https://github.com/esphome/esp-web-tools) 10.4.0 | the install button in `docs/` | Apache-2.0 (see `docs/vendor/esp-web-tools/LICENSE`) |
 | [Open-Meteo](https://open-meteo.com) | optional solar forecast (free API, data CC BY 4.0) | |
+| Waveshare ESP32-S3-Knob-Touch-LCD-1.8 demo code | the round panel's (ST77916) start-up sequence and the board's pins in `src/board_knob.cpp` | from Waveshare's published example code for the board |

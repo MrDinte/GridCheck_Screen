@@ -10,7 +10,7 @@ SIM_AP=1 ./build/render setup now out/setup-ap.raw
 python3 - <<'PY'
 import glob, struct
 from PIL import Image
-for f in glob.glob('out/*.raw'):
+for f in [g for g in glob.glob('out/*.raw') if not g.startswith('out/round-')]:
     d = open(f, 'rb').read()
     im = Image.new('RGB', (1024, 600))
     px = im.load()
@@ -18,5 +18,5 @@ for f in glob.glob('out/*.raw'):
         v = d[2 * i] | d[2 * i + 1] << 8
         px[i % 1024, i // 1024] = (((v >> 11) & 31) * 255 // 31, ((v >> 5) & 63) * 255 // 63, (v & 31) * 255 // 31)
     im.save(f[:-4] + '.png')
-print('rendered', len(glob.glob('out/*.png')), 'screens')
+print('rendered 7" screens')
 PY

@@ -6,6 +6,7 @@
 #include "net.h"
 #include "ui.h"
 #include "ui_common.h"
+#include "screen_size.h"
 #include "data.h"
 #include <vector>
 
@@ -105,20 +106,21 @@ extern "C" time_t time(time_t* t) {
   return v;
 }
 
-static uint16_t fb[1024 * 600];
+static constexpr int SW = board::SCREEN_W, SH = board::SCREEN_H;
+static uint16_t fb[SW * SH];
 static void flush(lv_disp_drv_t* d, const lv_area_t* a, lv_color_t* px) {
   for (int y = a->y1; y <= a->y2; y++)
-    for (int x = a->x1; x <= a->x2; x++) fb[y * 1024 + x] = (px++)->full;
+    for (int x = a->x1; x <= a->x2; x++) fb[y * SW + x] = (px++)->full;
   lv_disp_flush_ready(d);
 }
 
 int main(int argc, char** argv) {
   setenv("TZ", "AEST-10", 1); tzset();
   lv_init();
-  static lv_color_t buf[1024 * 100];
-  static lv_disp_draw_buf_t db; lv_disp_draw_buf_init(&db, buf, nullptr, 1024 * 100);
+  static lv_color_t buf[SW * 100];
+  static lv_disp_draw_buf_t db; lv_disp_draw_buf_init(&db, buf, nullptr, SW * 100);
   static lv_disp_drv_t dd; lv_disp_drv_init(&dd);
-  dd.hor_res = 1024; dd.ver_res = 600; dd.flush_cb = flush; dd.draw_buf = &db; lv_disp_drv_register(&dd);
+  dd.hor_res = SW; dd.ver_res = SH; dd.flush_cb = flush; dd.draw_buf = &db; lv_disp_drv_register(&dd);
 
   S.host = "192.168.1.50"; S.demo = false;
   if (const char* sup = getenv("SIM_SUPPLIER")) S.supplier = sup;
@@ -156,8 +158,12 @@ int main(int argc, char** argv) {
   ui::create();
   for (int i = 0; i < 60; i++) { fakeMs += 33; lv_tick_inc(33); lv_timer_handler(); }
   if (argc > 2) {
+#ifdef GC_KNOB18
+    const char* pages[] = {"now", "battery", "solar", "money", "today", "settings"};
+#else
     const char* pages[] = {"now", "today", "solar", "money", "flow", "battery", "history", "info"};
-    for (int i = 0; i < 8; i++) if (!strcmp(argv[2], pages[i])) ui::showPage(i);
+#endif
+    for (int i = 0; i < (int)(sizeof pages / sizeof pages[0]); i++) if (!strcmp(argv[2], pages[i])) ui::showPage(i);
     if (!strcmp(argv[2], "history7") || !strcmp(argv[2], "history30") || !strcmp(argv[2], "money30") || !strcmp(argv[2], "flow30")) {
       ui::showPage(!strncmp(argv[2], "history", 7) ? 6 : !strncmp(argv[2], "money", 5) ? 3 : 4);
       if (!strcmp(argv[2], "history7")) ui::setRanges(7, 7, 1);
@@ -181,6 +187,6 @@ int main(int argc, char** argv) {
   }
   ui::update();
   for (int i = 0; i < 30; i++) { fakeMs += 33; lv_tick_inc(33); lv_timer_handler(); }
-  FILE* f = fopen(argc > 3 ? argv[3] : "out.raw", "wb"); fwrite(fb, 2, 1024 * 600, f); fclose(f);
+  FILE* f = fopen(argc > 3 ? argv[3] : "out.raw", "wb"); fwrite(fb, 2, SW * SH, f); fclose(f);
   return 0;
 }

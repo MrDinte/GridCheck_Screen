@@ -41,6 +41,25 @@ void applyPalette(int palette, bool light = false);
 const char* hx(lv_color_t c);
 
 lv_obj_t* label(lv_obj_t* parent, const lv_font_t* font, lv_color_t color, const char* text = "");
+
+/** Time-of-use price right now (only when the clock is set and periods exist). */
+struct TouNow {
+  bool on = false;
+  int idx = -1;
+  float price = 0;
+  bool free = false, top = false;  // top: the dearest price of the day, with cheaper ones about
+  char until[8] = "";
+};
+TouNow touNow(const Tariff& t);
+/** "32.5c", "6c" or "free". */
+void priceText(char* out, size_t n, float cents);
+
+/** The one-line status ("Spare solar - run big appliances now") and its colour; `brief` for the round screen. */
+struct StatusNow {
+  char text[64] = "";
+  lv_color_t color;
+};
+StatusNow statusNow(const Live& l, const Settings& s, bool brief);
 lv_obj_t* plain(lv_obj_t* parent);
 void fmtKw(char* buf, size_t n, float v);
 

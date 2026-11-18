@@ -20,29 +20,39 @@
 <main>
   <div class="brand"><img src="favicon.svg" alt="">GridCheck</div>
   <h1>Install GridCheck on the screen</h1>
-  <p class="lede">A wall display for <b>Sigenergy</b> solar and battery systems, for the <b>Waveshare ESP32-S3-Touch-LCD-7B</b> (7", 1024×600). It reads your inverter over your own Wi-Fi; no cloud, no account. <span class="ver" id="ver"></span></p>
+  <p class="lede">A display for <b>Sigenergy</b> solar and battery systems, for two Waveshare screens: the <b>ESP32-S3-Touch-LCD-7B</b> (7", 1024×600) and the round <b>ESP32-S3-Knob-Touch-LCD-1.8</b> (1.8", 360×360, also the black-case <b>1.8B</b>). It reads your inverter over your own Wi-Fi; no cloud, no account. <span class="ver" id="ver"></span></p>
 
   <section class="card">
     <h2>1. Connect the board</h2>
     <ol class="steps">
-      <li>Plug a USB-C cable into the board's port labelled <b>UART</b>, and the other end into this computer. Use a cable that carries data, not a charge-only one.</li>
+      <li><b>7" screen:</b> plug a USB-C cable into the port labelled <b>UART</b>, and the other end into this computer.</li>
+      <li><b>Round knob screen:</b> plug a USB-C cable into its USB-C port. One way round, the plug reaches the board's second chip instead: if the list in step 2 only shows a <b>CH340</b> / <b>USB-SERIAL</b> device, unplug, turn the plug over and plug it in again. The right way round it shows as <b>USB JTAG/serial debug unit</b>.</li>
+      <li>Use a cable that carries data, not a charge-only one.</li>
       <li>Use <b>Chrome</b> or <b>Edge</b> on a computer (not a phone). Firefox and Safari can't talk to USB devices.</li>
     </ol>
   </section>
 
   <section class="card">
     <h2>2. Install</h2>
+    <p>Pick the button for your screen. Each screen only accepts its own firmware.</p>
     <div class="install">
       <esp-web-install-button manifest="firmware/manifest.json">
-        <button slot="activate" class="primary" style="width:100%">Install GridCheck</button>
+        <button slot="activate" class="primary" style="width:100%">Install on the 7" screen (ESP32-S3-Touch-LCD-7B)</button>
+        <span slot="unsupported" class="warn">This browser can't install firmware. Open this page in Chrome or Edge on a computer.</span>
+        <span slot="not-allowed" class="warn">This page must be opened over https (as it is on GitHub Pages).</span>
+      </esp-web-install-button>
+    </div>
+    <div class="install" style="margin-top:10px">
+      <esp-web-install-button manifest="firmware/knob18/manifest.json">
+        <button slot="activate" class="primary" style="width:100%">Install on the round knob screen (ESP32-S3-Knob-Touch-LCD-1.8 / 1.8B)</button>
         <span slot="unsupported" class="warn">This browser can't install firmware. Open this page in Chrome or Edge on a computer.</span>
         <span slot="not-allowed" class="warn">This page must be opened over https (as it is on GitHub Pages).</span>
       </esp-web-install-button>
     </div>
     <ol class="steps" style="margin-top:14px">
-      <li>Pick the board in the list that pops up (often called <b>USB Single Serial</b> or <b>CH343</b>, or a COM port) and press <b>Connect</b>.</li>
+      <li>Pick the board in the list that pops up and press <b>Connect</b>. The 7" is often called <b>USB Single Serial</b> or <b>CH343</b>; the round screen <b>USB JTAG/serial debug unit</b>.</li>
       <li>Choose <b>Install</b>. <b>New screen:</b> tick <b>Erase device</b>. <b>Already running GridCheck:</b> leave it unticked so your Wi-Fi and settings are kept. It takes about a minute.</li>
-      <li>When it says it's done, press the board's <b>RESET</b> button.</li>
+      <li>When it says it's done, press the 7" board's <b>RESET</b> button, or unplug the round screen and plug it in again.</li>
     </ol>
     <p class="help"><b>Board not in the list?</b> Try the other USB-C port or another cable. If it still doesn't show, hold <b>BOOT</b>, tap <b>RESET</b>, let go of <b>BOOT</b>, then press Install again. On older Windows you may need the CH343 USB driver from Waveshare's site.</p>
   </section>
@@ -52,14 +62,14 @@
     <ol class="steps">
       <li>The screen shows <b>Not set up yet</b>. On your phone, join the Wi-Fi called <b>GridCheck-Setup</b>.</li>
       <li>A setup page opens (if not, go to <b>http://192.168.4.1</b>). Choose your home Wi-Fi, type its password and the inverter's IP address, then Save.</li>
-      <li>The screen restarts and joins your Wi-Fi. Settings are then at the address shown at the bottom of the screen.</li>
+      <li>The screen restarts and joins your Wi-Fi. Settings are then at the address shown at the bottom of the 7" screen, or on the round screen's last page (turn the knob).</li>
     </ol>
     <p class="help">No inverter connection yet? Tick <b>Show demo data instead</b> on the setup page to check the screen works.</p>
   </section>
 
   <section class="card">
     <h2>4. Updates</h2>
-    <p>From version 0.5.0 the screen updates over Wi-Fi, so you only need USB once. When a new version is out, the screen's <b>Settings &amp; info</b> page says so: tap <b>Firmware</b>, then tap again to install. Or press <b>Install update</b> on the phone settings page. It never installs on its own.</p>
+    <p>The screen updates over Wi-Fi, so you only need USB once (the 7" from version 0.5.0). When a new version is out, the 7" screen's <b>Settings &amp; info</b> page says so: tap <b>Firmware</b>, then tap again to install. On the round screen it's the last page: tap the version, then tap again. Or press <b>Install update</b> on the phone settings page. It never installs on its own.</p>
     <p class="help">Every update is digitally signed, and the screen refuses anything that isn't signed with GridCheck's key. Set a PIN on the phone settings page so only you can change settings or start an update.</p>
   </section>
 </main>

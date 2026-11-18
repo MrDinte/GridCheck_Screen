@@ -23,7 +23,12 @@ static const char* TAG = "ota";
 
 namespace ota {
 
+// Each screen has its own update file, so it is only ever offered firmware built for it.
+#ifdef GC_KNOB18
+const char* const DEFAULT_URL = "https://mrdinte.github.io/GridCheck_Screen/firmware/knob18/ota.json";
+#else
 const char* const DEFAULT_URL = "https://mrdinte.github.io/GridCheck_Screen/firmware/ota.json";
+#endif
 
 static std::mutex lock;
 static Status st;
@@ -133,6 +138,13 @@ static bool writeEnd(std::string& err) {
   // The version is read from inside the signed file, so it can't be faked. Refuse older
   // releases, so nobody can put back an old version with a problem that has since been fixed.
   esp_app_desc_t d = {};
+  // Firmware for the other screen (7" or round) is signed too, but would leave this one blank:
+  // the project name stamped into the build ("gridcheck", "gridcheck-knob18") must match ours.
+  if (esp_ota_get_partition_description(wPart, &d) == ESP_OK && strncmp(d.project_name, esp_app_get_description()->project_name, sizeof d.project_name) != 0) {
+    err = std::string("that firmware is for a different screen (") + d.project_name + "), so it won't be installed";
+    ESP_LOGW(TAG, "rejected update: %s", err.c_str());
+    return false;
+  }
   if (esp_ota_get_partition_description(wPart, &d) != ESP_OK || !strchr(d.version, '.') || cmpVersion(d.version, EH_VERSION) < 0) {
     err = std::string("that is an older version (") + d.version + ") than this screen's " EH_VERSION ", so it won't be installed";
     ESP_LOGW(TAG, "rejected update: %s", err.c_str());

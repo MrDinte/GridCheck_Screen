@@ -3,6 +3,7 @@
 sim/build/
 sim/out/
 sdkconfig.waveshare_7b
+sdkconfig.knob18
 sdkconfig.old
 # the private signing key must never go into a public repo
 keys/*key.pem

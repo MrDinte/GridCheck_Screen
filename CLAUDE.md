@@ -1,7 +1,9 @@
 # GridCheck Screen: notes for Claude
 
-Firmware for a wall display showing a **Sigenergy** solar + battery system on the
-**Waveshare ESP32-S3-Touch-LCD-7B** (1024×600 RGB panel, 16 MB flash, 8 MB PSRAM). It reads
+Firmware for a display showing a **Sigenergy** solar + battery system on two boards: the
+**Waveshare ESP32-S3-Touch-LCD-7B** (1024×600 RGB panel, 16 MB flash, 8 MB PSRAM) and the round
+**Waveshare ESP32-S3-Knob-Touch-LCD-1.8 / 1.8B** (360×360 ST77916 over QSPI, CST816 touch,
+rotary knob; 1.8B = black case, same electronics). It reads
 the inverter over Modbus TCP on the home network and updates itself over Wi-Fi from this
 repo's GitHub Pages site. The owner flashes the board, tests on real hardware and reports back;
 we can't run the board here, so check UI changes in the PC simulator (`sim/`) before publishing.
@@ -13,14 +15,18 @@ requests and agreed next steps, anything parked. Keep it short, replace stale li
 appending, then commit and push. Only keep project facts here (this repo is public): no IP
 addresses, emails or keys.
 
-## Current state (updated 2026-11-16)
-- Published: **0.7.9**: feed-in at set hours (`Tariff::sellTimed/sellStart/sellEnd/sellDays`,
-  `sellOther` outside them) and a daily limit (`sellCapKWh`, then `sellAfterCap`); owner's plan is
-  10c 16:00-21:00 for the first 10 kWh, 0c otherwise. Today's paid kWh is kept in `/data/fit.bin`.
-  Tariff grew at the end; `TariffV1` (0.7.8 and earlier) still loads from NVS.
-  0.7.5-0.7.8: tappable Now icons, filling battery, supplier list, Peak/Off-peak/Shoulder editor
-  with time wheels (`tariffProblem()` checks overlaps), refuse older versions and uploads while
-  the hotspot is open (`TECH_NOTES.md`). None of 0.7.5-0.7.9 tried on the board yet.
+## Current state (updated 2026-11-18)
+- Published: **0.8.0** for both screens. New: the round knob screen (`board_knob.cpp`,
+  `ui_round.cpp`; six pages Now/Battery/Solar/Money/Today/Settings, knob turns pages and wraps,
+  edge ring = battery charge). **Not yet run on a real knob board**: first install is over USB
+  from the install page; check the picture, touch, knob direction (A = clockwise in
+  Waveshare's demo), backlight. The 7" is unchanged apart from refusing firmware for the other
+  screen (project name check in `ota.cpp`).
+- 0.7.5-0.7.9 (7"): tappable Now icons, filling battery, supplier list, Peak/Off-peak/Shoulder
+  editor with time wheels, feed-in at set hours with a daily limit (owner: 10c 16:00-21:00 for
+  the first 10 kWh, 0c otherwise), refuse older versions, `TECH_NOTES.md`. Not yet tried on the board.
+- Asked about remote access / Tailscale (answered: Tailscale subnet router at home; the ESP32
+  can't run Tailscale itself). Nothing built for it.
 - Offered, not yet agreed: passphrase on the signing key; signing `ota.json` is not needed
   (the version check uses the signed image).
 - Owner's board: on 0.7.x. Updating over Wi-Fi is confirmed working on the real board
@@ -39,14 +45,17 @@ addresses, emails or keys.
   entry in README "Version history").
 - Updates are checked at start-up and **twice a day**, and a red dot on the Settings cog shows
   when one is available. Nothing installs without the owner pressing Install.
-- Version numbers: `-DEH_VERSION=\"x.y.z\"` in `platformio.ini`. The 0.7.x series is current.
+- Version numbers: `-DEH_VERSION=\"x.y.z\"` in the shared `[env]` of `platformio.ini` (one
+  version for both screens). The 0.8.x series is current.
 
 ## Build, check, release
 ```sh
-pio run                          # build (PlatformIO, ESP-IDF 5.3 + LVGL 8.4, not Arduino)
-sh sim/build.sh && sh sim/render.sh        # render screens to sim/out/*.png on the PC
+pio run                          # build both (PlatformIO, ESP-IDF 5.3 + LVGL 8.4, not Arduino)
+pio run -e knob18                # just the round screen (-e waveshare_7b for the 7")
+sh sim/build.sh && sh sim/render.sh        # render 7" screens to sim/out/*.png on the PC
+BOARD=knob18 sh sim/build.sh && sh sim/render_round.sh   # round screens -> sim/out/round-*.png
 python3 sim/make_readme_images.py          # regenerate README screenshots (docs/images)
-sh tools/package.sh              # build, SIGN, write docs/firmware/ (manifest.json, ota.json, bins)
+sh tools/package.sh              # build both, SIGN, write docs/firmware/ (7") and docs/firmware/knob18/
 ```
 Release = bump `EH_VERSION`, add a README "Version history" line, run `tools/package.sh`,
 commit and push to `main` (GitHub Pages serves `docs/`, so pushing publishes the update; Pages
@@ -74,6 +83,22 @@ caches `ota.json` for a few minutes). `package.sh` keeps only the two newest `-a
   install and clears history.
 - A new version confirms itself after 20 s; a reset before that rolls back to the previous
   version, and the screen reports it.
+
+## Two boards (0.8.0)
+- `GC_BOARD` (CMake, `-DGC_BOARD=knob18` from `board_build.cmake_extra_args`) picks the board:
+  `src/CMakeLists.txt` drops `board.cpp`/`ui.cpp`/`ui_pages.cpp` for the knob and
+  `board_knob.cpp`/`ui_round.cpp` for the 7"; the knob also defines `GC_KNOB18` and uses
+  `sdkconfig.defaults.knob18` (no RGB workarounds, DIO flash as in Waveshare's demo).
+- Project name `gridcheck` (7") / `gridcheck-knob18` is stamped into the app; `ota.cpp`
+  refuses an update whose project name differs. Each screen has its own update file:
+  `docs/firmware/ota.json` (7") and `docs/firmware/knob18/ota.json`. Never move the 7" one.
+- Knob pins/init come from Waveshare's ESP-IDF demo (08_LVGL_Test): LCD CS 14, CLK 13,
+  D0-D3 15-18, RST 21, backlight 47 (PWM); touch CST816 0x15 on SDA 11/SCL 12, RST 10, INT 9;
+  knob A 8 / B 7 (each click pulses one line). Panel areas must be even-aligned (rounder in
+  `main.cpp`); pixels are byte-swapped in `board_knob.cpp`.
+- USB on the knob: one way round the USB-C plug reaches the second chip (CH340); the S3 shows
+  as "USB JTAG/serial debug unit".
+- Shared UI helpers (palette, labels, status line `statusNow()`, `touNow()`) are in `ui_common.cpp`.
 
 ## Code map
 - `src/main.cpp` UI loop (dimming, theme/palette rebuilds), inverter polling task.

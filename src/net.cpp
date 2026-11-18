@@ -63,6 +63,17 @@ std::string address() {
   return "";
 }
 
+// Where things are on this screen, for the phone page's hints.
+#ifdef GC_KNOB18
+#define SCREEN_PRICES ""  // the round screen has no price editor
+#define SCREEN_SETTINGS "the round screen's last page (turn the knob)"
+#define SCREEN_ADDRESS "on the round screen's last page"
+#else
+#define SCREEN_PRICES " Prices can also be changed on the screen: Settings &amp; info, Power prices."
+#define SCREEN_SETTINGS "the screen's Settings &amp; info page"
+#define SCREEN_ADDRESS "at the bottom of the screen"
+#endif
+
 // ---- settings storage ------------------------------------------------------
 static std::string getStr(nvs_handle_t h, const char* key, const std::string& def) {
   size_t len = 0;
@@ -375,7 +386,7 @@ static std::string page(const std::string& message, bool good) {
     h += "<div class=card><h2>Power prices</h2><label for=supplier>Grid supplier</label><input id=supplier name=supplier list=suppliers maxlength=31 "
          "placeholder='e.g. AGL, Origin Energy' value='" + esc(s.supplier) + "'><datalist id=suppliers>";
     for (const char* n : SUPPLIERS) h += std::string("<option value='") + n + "'>";
-    h += "</datalist><p class=help style='margin:4px 0 12px'>Pick from the list or type your own. Prices can also be changed on the screen: Settings &amp; info, Power prices.</p>"
+    h += "</datalist><p class=help style='margin:4px 0 12px'>Pick from the list or type your own." SCREEN_PRICES "</p>"
          "<div class=row><div><label for=sell>Feed-in price (c/kWh)</label><input id=sell name=sell inputmode=decimal value='" +
          num(t.sell) + "'></div><div><label for=supply>Supply charge (c/day)</label><input id=supply name=supply inputmode=decimal placeholder='optional' value='" +
          (t.supply > 0 ? num(t.supply) : std::string("")) + "'></div></div>";
@@ -433,7 +444,7 @@ static std::string page(const std::string& message, bool good) {
        "<button type=button class=sec id=oupload>Install file</button>"
        "<label for=updurl style='margin-top:16px'>Update address (leave blank for the normal one)</label><input id=updurl name=updurl autocapitalize=off autocomplete=off placeholder='" +
        std::string(ota::DEFAULT_URL) + "' value='" + esc(s.updateUrl) +
-       "'><p class=help>The screen looks for new versions when it starts and twice a day after that, but only installs one when you press Install (here or on the screen's Settings &amp; info page). "
+       "'><p class=help>The screen looks for new versions when it starts and twice a day after that, but only installs one when you press Install (here or on " SCREEN_SETTINGS "). "
        "Only firmware signed by GridCheck is accepted. Your settings and history are kept. If a new version won't start, the screen goes back to the old one by itself.";
   if (!s.pinHash.empty()) h += " Fill in your current PIN below first.";
   h += "</p></div>";
@@ -441,7 +452,7 @@ static std::string page(const std::string& message, bool good) {
   if (!s.pinHash.empty()) h += "<label for=pin>Current PIN (needed to save)</label><input id=pin name=pin type=password inputmode=numeric autocomplete=off>";
   h += std::string("<label for=newpin>") + (s.pinHash.empty() ? "Set a PIN (optional, 4-8 digits)" : "New PIN (optional, 4-8 digits; 0000 removes it)") +
        "</label><input id=newpin name=newpin type=password inputmode=numeric autocomplete=off>"
-       "<p class=help>Forgot the PIN? On the screen, swipe to the Settings &amp; info page and hold <b>Reset all</b> for 5 seconds.</p></div>";
+       "<p class=help>Forgot the PIN? Go to " SCREEN_SETTINGS " and hold <b>Reset all</b> for 5 seconds.</p></div>";
   h += "<button type=submit>Save</button></form></main><script>";
   h += OTA_JS;
   h += "</script></body></html>";
@@ -665,7 +676,7 @@ static esp_err_t handleSave(httpd_req_t* req) {
     restartSoon();
     return sendPage(req, "200 OK",
                     "Saved. The screen is restarting to join \"" + ssid +
-                        "\". Reconnect your phone to your home Wi-Fi, then open the address shown at the bottom of the screen.",
+                        "\". Reconnect your phone to your home Wi-Fi, then open the address shown " SCREEN_ADDRESS ".",
                     true);
   }
   return sendPage(req, "200 OK", "Saved.", true);

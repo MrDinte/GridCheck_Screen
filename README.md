@@ -1,6 +1,6 @@
 # GridCheck Screen
 
-A wall display for **Sigenergy** solar and battery systems, running on the **Waveshare ESP32-S3-Touch-LCD-7B** (7", 1024×600). It reads your inverter over Modbus TCP on your own Wi-Fi: no cloud, no account, no PC once it's installed.
+A wall display for **Sigenergy** solar and battery systems, running on the **Waveshare ESP32-S3-Touch-LCD-7B** (7", 1024×600) or the round **Waveshare ESP32-S3-Knob-Touch-LCD-1.8** (1.8", 360×360, with a turning knob; the **1.8B** is the black-case version). It reads your inverter over Modbus TCP on your own Wi-Fi: no cloud, no account, no PC once it's installed.
 
 ![GridCheck Now screen](docs/images/screen-7b.png)
 
@@ -59,6 +59,12 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 7. **History**: the last 24 hours of power, or daily totals for 7 or 30 days.
 8. **Settings & info**: phone settings address, Wi-Fi, inverter connection, **Power prices** (tap to choose your grid supplier, set Peak and Off-peak times, set when feed-in is paid and any daily limit, and change each price), firmware updates, and buttons for **Colours**, **Theme**, **screen timeout**, **Restart** and **Reset all settings** (hold 5 s).
 
+### The round knob screen (1.8")
+
+![The round screen's six pages](docs/images/screen-knob18.png)
+
+**Turn the knob** (or swipe) to go through six pages: **Now** (solar, home, grid and battery), **Battery** (a battery that fills up, time to full or empty), **Solar** today against the forecast, **Money** (spent and earned today, the grid price and feed-in right now), **Today**'s energy, and **Settings** (the phone settings address, colours, theme, firmware updates, reset). The ring round the edge shows the battery charge (solar progress on the Solar page). Turning the knob also wakes a dimmed screen. Prices and everything else are set on the phone page.
+
 ### Light and dark
 
 Choose **Dark**, **Light** or **Auto** (light by day, dark during the night hours) with the **Theme** button on the Settings & info page, or on the phone page.
@@ -87,6 +93,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.8.0**: the round **Waveshare ESP32-S3-Knob-Touch-LCD-1.8 / 1.8B** (360×360) is supported, with six pages you turn through with the knob, its own install button and its own updates. Each screen now refuses firmware made for the other one. Nothing changes on the 7" screen.
 - **0.7**: everything since 0.6:
   - **Power prices on the screen** (Settings & info): pick your grid supplier from a list, switch Peak and Off-peak on or off, set their start and end times and days on hour/minute wheels, and type each price (Peak, Off-peak, Shoulder, feed-in, supply charge) on a number pad. The phone page has a Grid supplier box too. (0.7.6, 0.7.8)
   - **Feed-in at set hours**, e.g. 10c from 4 pm to 9 pm for the first 10 kWh a day and 0c at other times, on the screen and the phone page. Spent & earned counts it that way. (0.7.9)
@@ -112,10 +119,10 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 Needs [PlatformIO](https://platformio.org/) (ESP-IDF 5.3, not Arduino) and `pip install cryptography`.
 
 ```bash
-pio run                  # build
-pio run -t upload        # flash over USB
-pio device monitor       # log, 115200 baud
-sh tools/package.sh      # build, sign and write docs/firmware/ (install page + ota.json)
+pio run                          # build both screens
+pio run -e waveshare_7b -t upload  # flash the 7" over USB (-e knob18 for the round screen)
+pio device monitor               # log, 115200 baud
+sh tools/package.sh              # build, sign and write docs/firmware/ (7") and docs/firmware/knob18/ (round)
 ```
 
 Screens running the official firmware only accept updates signed with the official key. To build and update your own, make your own key and build its public key into the firmware, then install that build over USB once:
@@ -127,7 +134,7 @@ python3 tools/sign.py header keys/signing_key_pub.pem src/signing_pub.h
 
 Point the screen's **Update address** (phone page) at your own `ota.json` to update from your own site.
 
-- `sim/` renders the real screen code on a PC into PNGs: `sh sim/build.sh && sh sim/render.sh`, after one `pio run`.
+- `sim/` renders the real screen code on a PC into PNGs: `sh sim/build.sh && sh sim/render.sh` (7"), or `BOARD=knob18 sh sim/build.sh && sh sim/render_round.sh` (round), after one `pio run`.
 - `tools/make_fonts.sh` regenerates the fonts.
 - `tools/make_lv_conf.py` regenerates `include/lv_conf.h`.
 
