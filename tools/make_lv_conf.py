@@ -37,6 +37,7 @@ setdef('LV_FONT_CUSTOM_DECLARE', 'LV_FONT_DECLARE(eh_num_76) LV_FONT_DECLARE(eh_
 setdef('LV_THEME_DEFAULT_DARK', '1')
 setdef('LV_BUILD_EXAMPLES', '0')
 setdef('LV_MEMCPY_MEMSET_STD', '1')
+setdef('LV_USE_QRCODE', '1')         # the round screen's "Change Wi-Fi" QR code
 
 (root / 'include').mkdir(exist_ok=True)
 (root / 'include/lv_conf.h').write_text(src)

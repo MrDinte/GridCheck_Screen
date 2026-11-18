@@ -16,7 +16,10 @@ appending, then commit and push. Only keep project facts here (this repo is publ
 addresses, emails or keys.
 
 ## Current state (updated 2026-11-18)
-- Published: **0.8.1** for both screens. The round knob screen (0.8.0) **works on the owner's
+- Published: **0.8.2** for both screens. 0.8.2: knob Settings page "Change Wi-Fi" opens the
+  setup hotspot now (`net::openSetupHotspot()`, closes on Close / after 10 min / on save) with a
+  QR code (`LV_USE_QRCODE` on; QR is black on white on purpose). Not yet tried on the board.
+- 0.8.0/0.8.1: The round knob screen (0.8.0) **works on the owner's
   board** (installed from the install page; USB plug must be the right way up for the S3).
 - 0.8.1 adds **Tailscale on the knob** (`src/vpn.*`, MicroLink in `components/microlink`,
   knob build only). Home end: the owner's **Home Assistant** with the Modbus Proxy add-on
@@ -116,7 +119,8 @@ caches `ota.json` for a few minutes). `package.sh` keeps only the two newest `-a
   `applyPalette()` (3 palettes × dark/light), so new UI must use the `C_*` colours.
 - `sim/` compiles the real UI code on Linux; `sim/sim_main.cpp` stubs net/data/ota
   (env vars: `SIM_LIGHT`, `SIM_PALETTE`, `SIM_OTA`, `SIM_OTA_PCT`, `SIM_TOU`, `SIM_TIME`, `SIM_AP`,
-  `SIM_SUPPLIER`, `SIM_FIT`; pages `prices`, `prices-end`, `prices-list` open the price editor).
+  `SIM_SUPPLIER`, `SIM_FIT`, `SIM_REMOTE`, `SIM_HOTSPOT`; pages `prices`, `prices-end`,
+  `prices-list` open the price editor).
 
 ## Related repo
 The web dashboard and Node bridge (the original browser version, 800×480 and round layouts)

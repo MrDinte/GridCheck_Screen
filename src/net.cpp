@@ -37,6 +37,10 @@ static Settings S;
 static std::mutex lock;
 static volatile uint32_t version = 1;
 static volatile bool ap = false, apBecauseNoWifi = false, haveIp = false;
+// "Change Wi-Fi" on the screen: open the setup hotspot now, even while on Wi-Fi
+static volatile bool apByHand = false, openRequested = false, closeRequested = false;
+static uint32_t apOpenedMs = 0;
+static constexpr uint32_t AP_BY_HAND_MS = 10 * 60 * 1000;  // closes itself after 10 minutes
 static char ipStr[16] = "";
 static uint32_t staStartMs = 0, connectedSinceMs = 0;
 static std::vector<std::string> networks;
@@ -54,6 +58,9 @@ Settings settings() {
 }
 uint32_t settingsVersion() { return version; }
 bool apMode() { return ap; }
+void openSetupHotspot() { openRequested = true; }
+void closeSetupHotspot() { closeRequested = true; }
+bool setupHotspotByHand() { return apByHand || openRequested; }
 bool connected() { return haveIp; }
 std::string ssidInUse() {
   wifi_ap_record_t info;
@@ -980,8 +987,23 @@ static void watchTask(void*) {
       scan();
       startAP(false);
     }
+    // Opened from the screen ("Change Wi-Fi"): list the networks for the phone page, then open it.
+    if (openRequested) {
+      openRequested = false;
+      if (!ap) {
+        scan();
+        startAP(false);
+      }
+      apByHand = true;
+      apOpenedMs = millis();
+    }
+    if (closeRequested || (apByHand && millis() - apOpenedMs > AP_BY_HAND_MS)) {
+      closeRequested = false;
+      apByHand = false;
+      if (ap && haveIp && !apBecauseNoWifi) stopAP();  // still needed when Wi-Fi isn't working
+    }
     // Joined home Wi-Fi again: close a hotspot we opened because of a failure.
-    if (haveIp && ap && !apBecauseNoWifi && millis() - connectedSinceMs > 15000) stopAP();
+    if (haveIp && ap && !apBecauseNoWifi && !apByHand && millis() - connectedSinceMs > 15000) stopAP();
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }

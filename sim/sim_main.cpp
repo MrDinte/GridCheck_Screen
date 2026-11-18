@@ -81,6 +81,10 @@ void restart() {}
 void setPalette(uint8_t p) { S.palette = p; }
 void setDimAfter(uint8_t m) { S.dimAfterMin = m; }
 void setTheme(uint8_t t) { S.theme = t; }
+static bool simHotspot = std::getenv("SIM_HOTSPOT") != nullptr;
+void openSetupHotspot() { simHotspot = true; }
+void closeSetupHotspot() { simHotspot = false; }
+bool setupHotspotByHand() { return simHotspot; }
 void setPrices(const Tariff& t, const std::string& sup) { S.tariff = t; S.supplier = sup; }
 }
 

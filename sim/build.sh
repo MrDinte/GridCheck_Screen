@@ -10,8 +10,10 @@ BOARD=${BOARD:-7b}
 mkdir -p build/lvgl build/app-$BOARD
 VER=$(sed -n 's/.*-DEH_VERSION=\\"\([^\\]*\)\\".*/\1/p' ../platformio.ini | head -1)
 FLAGS="-O1 -DLV_CONF_INCLUDE_SIMPLE -DEH_VERSION=\"$VER\" -I. -I$LV -I$LV/src -I../src"
+# LVGL objects are reused between builds; a change to include/lv_conf.h rebuilds them.
+CONF=$(md5sum ../include/lv_conf.h | cut -c1-8)
 for f in $(find $LV/src -name '*.c'); do
-  o=build/lvgl/$(echo "$f" | md5sum | cut -c1-12).o
+  o=build/lvgl/$(echo "$f$CONF" | md5sum | cut -c1-12).o
   [ -f "$o" ] || gcc $FLAGS -c "$f" -o "$o"
 done
 for f in ../src/fonts/*.c; do gcc $FLAGS -c "$f" -o build/lvgl/$(basename "$f" .c).o; done

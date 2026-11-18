@@ -32,6 +32,8 @@ static lv_obj_t *mSpent, *mEarned, *mBuy, *mSell;
 static lv_obj_t *tSolar, *tHouse, *tImp, *tExp, *tSelf;
 // Settings
 static lv_obj_t *xAddr, *xWifi, *xPal, *xTheme, *xFw, *xReset;
+// "Change Wi-Fi": the setup hotspot is open; a QR code for the phone to join it
+static lv_obj_t* wifiBox;
 static uint32_t installAskedAt = 0;
 
 static constexpr int BATT_W = 112, BATT_H = 54, BATT_PAD = 5, BATT_BORDER = 5;
@@ -77,11 +79,11 @@ static lv_obj_t* listRow(lv_obj_t* parent, const char* name, lv_color_t color, i
 
 static lv_obj_t* pill(lv_obj_t* parent, int w, int y, lv_event_cb_t cb, lv_event_code_t code = LV_EVENT_CLICKED) {
   lv_obj_t* b = lv_btn_create(parent);
-  lv_obj_set_size(b, w, 36);
+  lv_obj_set_size(b, w, 34);
   lv_obj_align(b, LV_ALIGN_TOP_MID, 0, y);
   lv_obj_set_style_bg_color(b, C_TILE, 0);
   lv_obj_set_style_bg_color(b, C_FAINT, LV_STATE_PRESSED);
-  lv_obj_set_style_radius(b, 18, 0);
+  lv_obj_set_style_radius(b, 17, 0);
   lv_obj_set_style_shadow_width(b, 0, 0);
   lv_obj_t* l = label(b, &lv_font_montserrat_16, C_INK);
   lv_obj_center(l);
@@ -240,15 +242,17 @@ static void roundSettings(lv_obj_t* t) {
   centred(t, &lv_font_montserrat_16, C_MUTED, 40, "Settings on your phone");
   xAddr = centred(t, &lv_font_montserrat_18, C_INK, 60);
   lv_label_set_long_mode(xAddr, LV_LABEL_LONG_DOT);
-  xWifi = centred(t, &lv_font_montserrat_14, C_MUTED, 84);
+  xWifi = centred(t, &lv_font_montserrat_14, C_MUTED, 82);
   lv_label_set_long_mode(xWifi, LV_LABEL_LONG_DOT);
-  xPal = pill(t, 210, 110, [](lv_event_t*) { net::setPalette((uint8_t)((net::settings().palette + 1) % 3)); });
-  xTheme = pill(t, 230, 152, [](lv_event_t*) { net::setTheme((uint8_t)((net::settings().theme + 1) % 3)); });
-  xFw = pill(t, 250, 194, firmwareTap);
+  lv_obj_t* cw = pill(t, 190, 104, [](lv_event_t*) { net::openSetupHotspot(); });
+  lv_label_set_text(cw, LV_SYMBOL_WIFI "  Change Wi-Fi");
+  xPal = pill(t, 220, 144, [](lv_event_t*) { net::setPalette((uint8_t)((net::settings().palette + 1) % 3)); });
+  xTheme = pill(t, 240, 184, [](lv_event_t*) { net::setTheme((uint8_t)((net::settings().theme + 1) % 3)); });
+  xFw = pill(t, 250, 224, firmwareTap);
   lv_label_set_long_mode(xFw, LV_LABEL_LONG_DOT);
   lv_obj_set_width(xFw, 230);
   lv_obj_set_style_text_align(xFw, LV_TEXT_ALIGN_CENTER, 0);
-  xReset = pill(t, 190, 236, resetEvent, LV_EVENT_ALL);
+  xReset = pill(t, 190, 264, resetEvent, LV_EVENT_ALL);
   lv_obj_set_style_text_color(xReset, C_WARN, 0);
   lv_obj_set_style_text_font(xReset, &lv_font_montserrat_14, 0);
   lv_label_set_text(xReset, "Reset all (hold 5 s)");
@@ -256,6 +260,34 @@ static void roundSettings(lv_obj_t* t) {
   lv_obj_set_style_bg_opa(b, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_color(b, C_FAINT, 0);
   lv_obj_set_style_border_width(b, 1, 0);
+}
+
+// "Change Wi-Fi": shown while the setup hotspot is open from the Settings page.
+static void buildWifiBox(lv_obj_t* scr) {
+  wifiBox = plain(scr);
+  lv_obj_set_size(wifiBox, S, S);
+  lv_obj_set_style_bg_color(wifiBox, C_BG, 0);
+  lv_obj_set_style_bg_opa(wifiBox, LV_OPA_COVER, 0);
+  lv_obj_add_flag(wifiBox, LV_OBJ_FLAG_CLICKABLE);  // keep touches off the page underneath
+  centred(wifiBox, &lv_font_montserrat_20, C_INK, 30, "Change Wi-Fi");
+  // QR code to join the hotspot: always black on white, so any phone camera reads it
+  lv_obj_t* card = plain(wifiBox);
+  lv_obj_set_size(card, 146, 146);
+  lv_obj_align(card, LV_ALIGN_TOP_MID, 0, 60);
+  lv_obj_set_style_radius(card, 12, 0);
+  lv_obj_set_style_bg_color(card, lv_color_white(), 0);
+  lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
+  lv_obj_t* qr = lv_qrcode_create(card, 128, lv_color_black(), lv_color_white());
+  static const char JOIN[] = "WIFI:T:nopass;S:GridCheck-Setup;;";
+  lv_qrcode_update(qr, JOIN, sizeof JOIN - 1);
+  lv_obj_center(qr);
+  lv_obj_t* steps = centred(wifiBox, &lv_font_montserrat_14, C_MUTED, 212, "");
+  lv_obj_set_width(steps, 290);
+  lv_obj_align(steps, LV_ALIGN_TOP_MID, 0, 212);
+  lv_label_set_text_fmt(steps, "Scan with your phone to join\n#%s GridCheck-Setup#, then pick\nthe new Wi-Fi and Save.\nNo page? Open #%s 192.168.4.1#", hx(C_INK), hx(C_INK));
+  lv_obj_t* close = pill(wifiBox, 120, 290, [](lv_event_t*) { net::closeSetupHotspot(); });
+  lv_label_set_text(close, "Close");
+  lv_obj_add_flag(wifiBox, LV_OBJ_FLAG_HIDDEN);
 }
 
 // ---- build ---------------------------------------------------------------------
@@ -321,6 +353,7 @@ void create() {
     lv_obj_set_style_radius(dots[i], 3, 0);
     lv_obj_set_style_bg_opa(dots[i], LV_OPA_COVER, 0);
   }
+  buildWifiBox(scr);
   update();
 }
 
@@ -352,6 +385,10 @@ void update() {
   char b[64];
   const char* dash = "-";                     // built-in fonts
   const char* bigDash = "\xE2\x80\x93";      // GridCheck's number fonts (eh_num_*)
+
+  // "Change Wi-Fi" hotspot open
+  if (net::setupHotspotByHand()) lv_obj_clear_flag(wifiBox, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_add_flag(wifiBox, LV_OBJ_FLAG_HIDDEN);
 
   // page dots: the current one wider
   int x = C - (PAGES * 6 + (PAGES - 1) * 6 + 10) / 2;

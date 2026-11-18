@@ -63,7 +63,7 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 
 ![The round screen's six pages](docs/images/screen-knob18.png)
 
-**Turn the knob** (or swipe) to go through six pages: **Now** (solar, home, grid and battery), **Battery** (a battery that fills up, time to full or empty), **Solar** today against the forecast, **Money** (spent and earned today, the grid price and feed-in right now), **Today**'s energy, and **Settings** (the phone settings address, colours, theme, firmware updates, reset). The ring round the edge shows the battery charge (solar progress on the Solar page). Turning the knob also wakes a dimmed screen. Prices and everything else are set on the phone page.
+**Turn the knob** (or swipe) to go through six pages: **Now** (solar, home, grid and battery), **Battery** (a battery that fills up, time to full or empty), **Solar** today against the forecast, **Money** (spent and earned today, the grid price and feed-in right now), **Today**'s energy, and **Settings** (the phone settings address, **Change Wi-Fi**, colours, theme, firmware updates, reset). **Change Wi-Fi** opens the screen's setup hotspot straight away and shows a QR code: scan it with your phone to join, pick the new Wi-Fi on the page that opens and Save. Handy when you take the screen somewhere else. The ring round the edge shows the battery charge (solar progress on the Solar page). Turning the knob also wakes a dimmed screen. Prices and everything else are set on the phone page.
 
 ### Away from home with Tailscale (round screen)
 
@@ -73,8 +73,9 @@ The round screen can come with you: when it can't reach the inverter on the netw
 2. **Tailscale add-on.** Install **Tailscale** from the add-on store, start it, open its web UI and log in. Note its name in the [Tailscale admin console](https://login.tailscale.com/admin/machines) (for example `homeassistant`).
 3. **A key for the screen.** In the admin console: Settings, Keys, **Generate auth key**: one-off (not reusable), not ephemeral, pre-approved. Copy it.
 4. **On the screen's phone page,** under **Away from home (Tailscale)**: tick the box, paste the key, type Home Assistant's Tailscale name (or its 100.x address) and Save. The status line says when it's connected.
-5. In the admin console, find **gridcheck-knob**, open its ⋯ menu and **Disable key expiry**, so it doesn't need a new key in a few months.
-6. Try it away from home, for example on your phone's hotspot: after a few seconds of dashes it carries on **via Tailscale**.
+5. Away from home, give the screen the local Wi-Fi with **Change Wi-Fi** on its Settings page (or wait: it opens the setup hotspot by itself when it can't find its Wi-Fi).
+6. In the admin console, find **gridcheck-knob**, open its ⋯ menu and **Disable key expiry**, so it doesn't need a new key in a few months.
+7. Try it away from home, for example on your phone's hotspot: after a few seconds of dashes it carries on **via Tailscale**.
 
 Optional, to let the screen reach nothing but the proxy: make the key with a tag (for example `tag:gridcheck`) and allow only that in your tailnet policy:
 
@@ -115,6 +116,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.8.2**: **Change Wi-Fi** on the round screen's Settings page opens its setup hotspot at once, with a QR code for your phone. No change on the 7" screen.
 - **0.8.1**: **Away from home with Tailscale** on the round screen: it reads the inverter through Home Assistant (Modbus Proxy and Tailscale add-ons) when it can't reach it directly, and shows **via Tailscale**. Set it up on the phone page. No change on the 7" screen.
 - **0.8.0**: the round **Waveshare ESP32-S3-Knob-Touch-LCD-1.8 / 1.8B** (360×360) is supported, with six pages you turn through with the knob, its own install button and its own updates. Each screen now refuses firmware made for the other one. Nothing changes on the 7" screen.
 - **0.7**: everything since 0.6:

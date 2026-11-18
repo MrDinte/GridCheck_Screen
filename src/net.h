@@ -113,6 +113,12 @@ Settings settings();
 /** Bumped every time settings are saved, so the inverter task can reconnect. */
 uint32_t settingsVersion();
 bool apMode();             // setup hotspot is running
+/** "Change Wi-Fi" on the screen: open the setup hotspot now (it closes after 10 minutes,
+ *  on closeSetupHotspot(), or when new Wi-Fi is saved and the screen restarts). */
+void openSetupHotspot();
+void closeSetupHotspot();
+/** The hotspot was opened from the screen and is still meant to be open. */
+bool setupHotspotByHand();
 bool connected();          // joined home Wi-Fi
 std::string address();     // what to type on a phone
 std::string ssidInUse();
