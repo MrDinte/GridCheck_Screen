@@ -61,9 +61,9 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 
 ### The round knob screen (1.8")
 
-![The round screen's six pages](docs/images/screen-knob18.png)
+![The round screen's seven pages](docs/images/screen-knob18.png)
 
-**Turn the knob** (or swipe) to go through six pages: **Now** (solar, home, grid and battery), **Battery** (a battery that fills up, time to full or empty), **Solar** today against the forecast, **Money** (spent and earned today, the grid price and feed-in right now), **Today**'s energy, and **Settings** (the phone settings address, **Change Wi-Fi**, colours, theme, firmware updates, reset). **Change Wi-Fi** opens the screen's setup hotspot straight away and shows a QR code: scan it with your phone to join, pick the new Wi-Fi on the page that opens and Save. Handy when you take the screen somewhere else. The ring round the edge shows the battery charge (solar progress on the Solar page). Turning the knob also wakes a dimmed screen. Prices and everything else are set on the phone page.
+**Turn the knob** (or swipe) to go through seven pages: **Now** (solar, home, grid and battery), **Battery** (a battery that fills up, time to full or empty), **Solar** today against the forecast, **Money** (spent and earned today, the grid price and feed-in right now), **Today**'s energy, and **Settings** (the phone settings address, **Change Wi-Fi**, colours, theme, firmware updates, reset). **Change Wi-Fi** opens the screen's setup hotspot straight away and shows a QR code: scan it with your phone to join, pick the new Wi-Fi on the page that opens and Save. Handy when you take the screen somewhere else. The last page, **This screen**, shows its own battery (charge and voltage), brightness with − and + buttons, how soon it dims, the Wi-Fi signal and how long it has been on. The ring round the edge shows the battery charge (solar progress on the Solar page). Turning the knob also wakes a dimmed screen. Prices and everything else are set on the phone page.
 
 ### Away from home with Tailscale (round screen)
 
@@ -116,6 +116,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.8.4**: a **This screen** page on the round screen: its own battery, brightness (− / +), dimming, Wi-Fi signal. Saving a setting no longer blanks the readings for a moment (both screens).
 - **0.8.2-0.8.3**: **Change Wi-Fi** on the round screen's Settings page opens its setup hotspot at once, with a QR code for your phone that stays up until you press Close, save new Wi-Fi, or 10 minutes pass. No change on the 7" screen.
 - **0.8.1**: **Away from home with Tailscale** on the round screen: it reads the inverter through Home Assistant (Modbus Proxy and Tailscale add-ons) when it can't reach it directly, and shows **via Tailscale**. Set it up on the phone page. No change on the 7" screen.
 - **0.8.0**: the round **Waveshare ESP32-S3-Knob-Touch-LCD-1.8 / 1.8B** (360×360) is supported, with six pages you turn through with the knob, its own install button and its own updates. Each screen now refuses firmware made for the other one. Nothing changes on the 7" screen.

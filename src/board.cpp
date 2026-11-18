@@ -1,5 +1,7 @@
 #include "board.h"
 
+#include <cmath>
+
 #include "driver/gpio.h"
 #include "driver/i2c.h"
 #include "esp_lcd_panel_ops.h"
@@ -39,6 +41,7 @@ static uint8_t gtAddr = GT911_ADDR_A;
 
 bool expanderFound() { return expander_ok; }
 int knobTurns() { return 0; }  // no knob on the 7"
+float batteryVolts() { return NAN; }  // no battery on the 7"
 bool touchFound() { return touch_ok; }
 
 // ---- I2C helpers -------------------------------------------------------------

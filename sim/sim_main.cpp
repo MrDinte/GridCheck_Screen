@@ -69,6 +69,10 @@ DayRecord today() { return dayv.back(); }
 Forecast forecast() { Forecast f; f.ok = true; f.fromWeather = true; f.today = 31.6f; f.tomorrow = 27.9f; return f; }
 uint32_t version() { return 1; }
 }
+namespace board {
+// SIM_BATT=<volts> for the round screen's own battery (default 3.95 V)
+float batteryVolts() { return std::getenv("SIM_BATT") ? (float)atof(std::getenv("SIM_BATT")) : 3.95f; }
+}
 namespace net {
 Settings settings() { return S; }
 uint32_t settingsVersion() { return 1; }
@@ -81,6 +85,8 @@ void restart() {}
 void setPalette(uint8_t p) { S.palette = p; }
 void setDimAfter(uint8_t m) { S.dimAfterMin = m; }
 void setTheme(uint8_t t) { S.theme = t; }
+void setBrightness(uint8_t b) { S.brightness = b; }
+int wifiRssi() { return -58; }
 static bool simHotspot = std::getenv("SIM_HOTSPOT") != nullptr;
 void openSetupHotspot() { simHotspot = true; }
 void closeSetupHotspot() { simHotspot = false; }
@@ -164,7 +170,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < 60; i++) { fakeMs += 33; lv_tick_inc(33); lv_timer_handler(); }
   if (argc > 2) {
 #ifdef GC_KNOB18
-    const char* pages[] = {"now", "battery", "solar", "money", "today", "settings"};
+    const char* pages[] = {"now", "battery", "solar", "money", "today", "settings", "screen"};
 #else
     const char* pages[] = {"now", "today", "solar", "money", "flow", "battery", "history", "info"};
 #endif

@@ -130,6 +130,9 @@ void restart();
 void setPalette(uint8_t palette);
 void setTheme(uint8_t theme);
 void setDimAfter(uint8_t minutes);
+void setBrightness(uint8_t percent);
+/** Wi-Fi signal in dBm (e.g. -58), or 0 when not on Wi-Fi. */
+int wifiRssi();
 /** Save prices and the grid supplier changed on the screen (period names and times are kept). */
 void setPrices(const Tariff& tariff, const std::string& supplier);
 }  // namespace net

@@ -1,11 +1,12 @@
 // The round 360x360 layout for the Waveshare ESP32-S3-Knob-Touch-LCD-1.8 / 1.8B.
-// Six pages, in step with the web dashboard's round layout (round.html): Now, Battery,
-// Solar, Money, Today and Settings. Turn the knob (or swipe) to change page; the edge
+// Seven pages, in step with the web dashboard's round layout (round.html): Now, Battery,
+// Solar, Money, Today and Settings, plus This screen (its own battery, brightness, Wi-Fi). Turn the knob (or swipe) to change page; the edge
 // ring shows the battery charge (solar progress on the Solar page).
 #include <ctime>
 #include <strings.h>
 
 #include "ui.h"
+#include "board.h"
 #include "ui_common.h"
 
 #ifndef EH_VERSION
@@ -16,7 +17,7 @@ namespace ui {
 
 static constexpr int S = board::SCREEN_W;  // 360
 static constexpr int C = S / 2;            // centre
-enum { P_NOW, P_BATT, P_SOLAR, P_MONEY, P_TODAY, P_SET, PAGES };
+enum { P_NOW, P_BATT, P_SOLAR, P_MONEY, P_TODAY, P_SET, P_SCREEN, PAGES };
 
 static lv_obj_t *tiles, *ring, *statusDot, *statusLbl, *dots[PAGES];
 static int page = 0;
@@ -34,6 +35,8 @@ static lv_obj_t *tSolar, *tHouse, *tImp, *tExp, *tSelf;
 static lv_obj_t *xAddr, *xWifi, *xPal, *xTheme, *xFw, *xReset;
 // "Change Wi-Fi": the setup hotspot is open; a QR code for the phone to join it
 static lv_obj_t* wifiBox;
+// This screen
+static lv_obj_t *dBatt, *dBattSub, *dBright, *dDim, *dWifi, *dUp;
 static uint32_t installAskedAt = 0;
 
 static constexpr int BATT_W = 112, BATT_H = 54, BATT_PAD = 5, BATT_BORDER = 5;
@@ -262,6 +265,82 @@ static void roundSettings(lv_obj_t* t) {
   lv_obj_set_style_border_width(b, 1, 0);
 }
 
+// ---- This screen: its own battery, brightness, dimming, Wi-Fi signal ----------------
+/** Lithium cell voltage to % (rough, resting voltage). */
+static int battPercent(float v) {
+  static const float V[] = {3.30f, 3.50f, 3.60f, 3.65f, 3.70f, 3.75f, 3.80f, 3.90f, 4.00f, 4.10f, 4.20f};
+  static const int P[] = {0, 5, 12, 20, 30, 40, 50, 65, 80, 90, 100};
+  if (v <= V[0]) return 0;
+  for (int i = 1; i < 11; i++)
+    if (v < V[i]) return P[i - 1] + (int)((v - V[i - 1]) / (V[i] - V[i - 1]) * (P[i] - P[i - 1]));
+  return 100;
+}
+
+static void brightnessStep(int d) {
+  const int b = net::settings().brightness;
+  net::setBrightness((uint8_t)LV_MAX(5, LV_MIN(100, (b / 10 + d) * 10)));
+}
+
+static void roundScreen(lv_obj_t* t) {
+  centred(t, &lv_font_montserrat_16, C_MUTED, 40, "This screen");
+  dBatt = centred(t, &lv_font_montserrat_28, C_INK, 62);
+  dBattSub = centred(t, &lv_font_montserrat_14, C_MUTED, 96);
+  // brightness: - 80% +
+  lv_obj_t* row = plain(t);
+  lv_obj_set_size(row, 240, 44);
+  lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 124);
+  auto step = [&](const char* sym, lv_align_t al, lv_event_cb_t cb) {
+    lv_obj_t* b = lv_btn_create(row);
+    lv_obj_set_size(b, 56, 40);
+    lv_obj_align(b, al, 0, 0);
+    lv_obj_set_style_bg_color(b, C_TILE, 0);
+    lv_obj_set_style_bg_color(b, C_FAINT, LV_STATE_PRESSED);
+    lv_obj_set_style_radius(b, 20, 0);
+    lv_obj_set_style_shadow_width(b, 0, 0);
+    lv_obj_t* l = label(b, &lv_font_montserrat_22, C_INK, sym);
+    lv_obj_center(l);
+    lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, nullptr);
+  };
+  step(LV_SYMBOL_MINUS, LV_ALIGN_LEFT_MID, [](lv_event_t*) { brightnessStep(-1); });
+  step(LV_SYMBOL_PLUS, LV_ALIGN_RIGHT_MID, [](lv_event_t*) { brightnessStep(+1); });
+  dBright = label(row, &lv_font_montserrat_16, C_MUTED, "");
+  lv_label_set_recolor(dBright, true);
+  lv_obj_align(dBright, LV_ALIGN_CENTER, 0, 0);
+  dDim = pill(t, 220, 178, [](lv_event_t*) {
+    const uint8_t cur = net::settings().dimAfterMin;
+    int i = 0;
+    while (i < 5 && DIM_CHOICES[i] != cur) i++;
+    net::setDimAfter(DIM_CHOICES[(i + 1) % 5]);
+  });
+  dWifi = centred(t, &lv_font_montserrat_14, C_MUTED, 226);
+  dUp = centred(t, &lv_font_montserrat_14, C_MUTED, 248);
+}
+
+static void updateScreenPage(const Settings& s) {
+  const float v = board::batteryVolts();
+  if (std::isnan(v) || v < 2.5f) {
+    lv_label_set_text(dBatt, "No battery");
+    lv_label_set_text(dBattSub, "running on USB power");
+  } else {
+    const int pct = battPercent(v);
+    // There's no charging signal, so go by the voltage: a charger holds the cell near 4.2 V.
+    const bool charging = v >= 4.15f;
+    const lv_color_t c = charging ? C_GOOD : pct <= 15 ? C_WARN : C_INK;
+    lv_label_set_text_fmt(dBatt, "#%s %s# Battery #%s %d%%#", hx(c), charging ? LV_SYMBOL_CHARGE : pct > 60 ? LV_SYMBOL_BATTERY_3 : pct > 30 ? LV_SYMBOL_BATTERY_2 : pct > 10 ? LV_SYMBOL_BATTERY_1 : LV_SYMBOL_BATTERY_EMPTY, hx(c), pct);
+    lv_label_set_text_fmt(dBattSub, "%.2f V  -  %s", v, charging ? "charging or full (USB)" : "on battery");
+  }
+  lv_label_set_text_fmt(dBright, "Brightness #%s %u%%#", hx(C_INK), s.brightness);
+  if (s.dimAfterMin) lv_label_set_text_fmt(dDim, "Dim after %u min", s.dimAfterMin);
+  else lv_label_set_text(dDim, "Screen always on");
+  const int rssi = net::wifiRssi();
+  if (!rssi) lv_label_set_text(dWifi, "Wi-Fi: not connected");
+  else lv_label_set_text_fmt(dWifi, "Wi-Fi signal: %s (%d dBm)", rssi > -60 ? "good" : rssi > -72 ? "fair" : "weak", rssi);
+  const uint32_t up = millis() / 60000;
+  if (up < 60) lv_label_set_text_fmt(dUp, "On for %lu min", (unsigned long)up);
+  else if (up < 48 * 60) lv_label_set_text_fmt(dUp, "On for %lu h %lu min", (unsigned long)(up / 60), (unsigned long)(up % 60));
+  else lv_label_set_text_fmt(dUp, "On for %lu days", (unsigned long)(up / 1440));
+}
+
 // "Change Wi-Fi": shown while the setup hotspot is open from the Settings page.
 static void buildWifiBox(lv_obj_t* scr) {
   wifiBox = plain(scr);
@@ -334,6 +413,7 @@ void create() {
   roundMoney(t[P_MONEY]);
   roundToday(t[P_TODAY]);
   roundSettings(t[P_SET]);
+  roundScreen(t[P_SCREEN]);
 
   // status line and page dots along the bottom
   lv_obj_t* st = plain(scr);
@@ -405,7 +485,7 @@ void update() {
   lv_label_set_text(statusLbl, stat.text);
   lv_obj_set_style_text_color(statusLbl, stat.color, 0);
   lv_obj_set_style_bg_color(statusDot, stat.color, 0);
-  if (page == P_SET) lv_obj_add_flag(lv_obj_get_parent(statusLbl), LV_OBJ_FLAG_HIDDEN);
+  if (page == P_SET || page == P_SCREEN) lv_obj_add_flag(lv_obj_get_parent(statusLbl), LV_OBJ_FLAG_HIDDEN);
   else lv_obj_clear_flag(lv_obj_get_parent(statusLbl), LV_OBJ_FLAG_HIDDEN);
 
   // edge ring
@@ -542,6 +622,8 @@ void update() {
       lv_label_set_text_fmt(mSell, "%s", pr);
     }
   }
+
+  updateScreenPage(s);
 
   // ---- Settings
   const std::string addr = net::address();

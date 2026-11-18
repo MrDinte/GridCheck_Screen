@@ -51,10 +51,23 @@ static void inverterTask(void*) {
     const Settings s = net::settings();
     if (net::settingsVersion() != seenVersion) {
       seenVersion = net::settingsVersion();
-      reader.configure(s.host, s.port, s.plantId);
-      cur = Live();
-      failures = 0;
-      liveSet(cur);
+      // Only start again when the inverter settings changed (not for colours, brightness...),
+      // so the readings don't blank out when something else is saved.
+      static std::string host;
+      static uint16_t port = 0;
+      static uint8_t plant = 0;
+      static bool demo = false, first = true;
+      if (first || s.host != host || s.port != port || s.plantId != plant || s.demo != demo) {
+        first = false;
+        host = s.host;
+        port = s.port;
+        plant = s.plantId;
+        demo = s.demo;
+        reader.configure(s.host, s.port, s.plantId);
+        cur = Live();
+        failures = 0;
+        liveSet(cur);
+      }
     }
     if (s.demo) {
       demoFill(cur);

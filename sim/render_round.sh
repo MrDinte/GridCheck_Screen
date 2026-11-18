@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")"
 mkdir -p out
-for pg in now battery solar money today settings; do ./build/render_round day $pg out/round-$pg.raw; done
+for pg in now battery solar money today settings screen; do ./build/render_round day $pg out/round-$pg.raw; done
 ./build/render_round night now out/round-night.raw
 ./build/render_round night battery out/round-night-battery.raw
 SIM_LIGHT=1 ./build/render_round day now out/round-light.raw
@@ -29,13 +29,13 @@ for f in glob.glob('out/round-*.raw'):
     out.save(f[:-4] + '.png')
 print('rendered', len(glob.glob('out/round-*.png')), 'round screens')
 PY
-# README picture: the six pages, two rows of three
+# README picture: the seven pages, two rows
 python3 - <<'PY'
 from PIL import Image
-names = ['now', 'battery', 'solar', 'money', 'today', 'settings']
-sheet = Image.new('RGB', (1200, 800), (20, 20, 24))
+names = ['now', 'battery', 'solar', 'money', 'today', 'settings', 'screen']
+sheet = Image.new('RGB', (1600, 800), (20, 20, 24))
 for i, n in enumerate(names):
-    sheet.paste(Image.open('out/round-%s.png' % n), (400 * (i % 3), 400 * (i // 3)))
+    sheet.paste(Image.open('out/round-%s.png' % n), (400 * (i % 4), 400 * (i // 4)))
 sheet.save('../docs/images/screen-knob18.png', optimize=True)
 print('wrote docs/images/screen-knob18.png')
 PY

@@ -217,6 +217,17 @@ void setDimAfter(uint8_t minutes) {
   save();
 }
 
+void setBrightness(uint8_t percent) {
+  std::lock_guard<std::mutex> g(lock);
+  S.brightness = (uint8_t)constrain((int)percent, 5, 100);
+  save();
+}
+
+int wifiRssi() {
+  wifi_ap_record_t r;
+  return haveIp && esp_wifi_sta_get_ap_info(&r) == ESP_OK ? r.rssi : 0;
+}
+
 void setPrices(const Tariff& tariff, const std::string& supplier) {
   std::lock_guard<std::mutex> g(lock);
   S.tariff = tariff;

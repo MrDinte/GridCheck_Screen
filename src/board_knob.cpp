@@ -2,6 +2,7 @@
 // ST77916 panel over QSPI, CST816 touch on I2C, a rotary knob and a PWM backlight.
 // Pins and the panel's start-up sequence come from Waveshare's ESP-IDF demo for this board.
 #include <atomic>
+#include <cmath>
 #include <cstring>
 
 #include "board.h"
@@ -9,6 +10,9 @@
 #include "driver/i2c.h"
 #include "driver/ledc.h"
 #include "driver/spi_master.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
+#include "esp_adc/adc_oneshot.h"
 #include "esp_heap_caps.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_log.h"
@@ -416,6 +420,40 @@ static void knobBegin() {
 
 int knobTurns() { return turns.exchange(0); }
 
+// ---- battery (GPIO 1 = ADC1 channel 0, through a 1:2 divider, as in Waveshare's ADC demo) ----
+static adc_oneshot_unit_handle_t adc = nullptr;
+static adc_cali_handle_t adcCali = nullptr;
+static float battV = NAN;
+
+static void batteryBegin() {
+  adc_oneshot_unit_init_cfg_t u = {};
+  u.unit_id = ADC_UNIT_1;
+  if (adc_oneshot_new_unit(&u, &adc) != ESP_OK) {
+    adc = nullptr;
+    return;
+  }
+  adc_oneshot_chan_cfg_t c = {};
+  c.atten = ADC_ATTEN_DB_12;
+  c.bitwidth = ADC_BITWIDTH_12;
+  adc_oneshot_config_channel(adc, ADC_CHANNEL_0, &c);
+  adc_cali_curve_fitting_config_t k = {};
+  k.unit_id = ADC_UNIT_1;
+  k.atten = ADC_ATTEN_DB_12;
+  k.bitwidth = ADC_BITWIDTH_12;
+  if (adc_cali_create_scheme_curve_fitting(&k, &adcCali) != ESP_OK) adcCali = nullptr;
+}
+
+float batteryVolts() {
+  if (!adc) return NAN;
+  int raw = 0, mv = 0;
+  if (adc_oneshot_read(adc, ADC_CHANNEL_0, &raw) != ESP_OK) return battV;
+  if (adcCali) adc_cali_raw_to_voltage(adcCali, raw, &mv);
+  else mv = raw * 3300 / 4095;
+  const float v = mv * 2 / 1000.0f;  // undo the divider
+  battV = std::isnan(battV) ? v : battV * 0.9f + v * 0.1f;  // smooth out the ADC noise
+  return battV;
+}
+
 // ---- start-up ---------------------------------------------------------------------------
 bool begin() {
   backlightBegin();
@@ -426,6 +464,7 @@ bool begin() {
   ESP_LOGI(TAG, "panel: %s", panel_ok ? "started" : "FAILED");
   touchBegin();
   knobBegin();
+  batteryBegin();
   return panel_ok;
 }
 

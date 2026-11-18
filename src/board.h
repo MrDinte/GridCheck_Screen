@@ -26,6 +26,9 @@ void setBrightness(uint8_t percent);
 /** Knob clicks since the last call: + clockwise, - anticlockwise (always 0 on the 7"). */
 int knobTurns();
 
+/** The screen's own battery in volts, smoothed; NAN when there's no battery input (the 7"). */
+float batteryVolts();
+
 bool expanderFound();
 bool touchFound();
 
