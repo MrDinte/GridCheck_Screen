@@ -152,6 +152,7 @@ int main(int argc, char** argv) {
   if (!strcmp(scene, "error")) { L = Live(); L.ok = false; L.updatedMs = 1; strcpy(L.error, "the inverter hung up while reading 30005 from unit 247. Is another device (e.g. Home Assistant) connected to it?"); }
   if (!strcmp(scene, "setup")) { L = Live(); S.host = ""; }
 
+  if (getenv("SIM_REMOTE")) L.remote = true;  // round screen reading through Tailscale
   if (getenv("SIM_PALETTE")) S.palette = atoi(getenv("SIM_PALETTE"));
   if (getenv("SIM_LIGHT")) S.theme = 1;
   if (getenv("SIM_PALETTE") || getenv("SIM_LIGHT")) ui::applyPalette(S.palette, S.theme == 1);

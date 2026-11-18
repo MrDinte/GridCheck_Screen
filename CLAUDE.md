@@ -16,20 +16,20 @@ appending, then commit and push. Only keep project facts here (this repo is publ
 addresses, emails or keys.
 
 ## Current state (updated 2026-11-18)
-- Published: **0.8.0** for both screens. New: the round knob screen (`board_knob.cpp`,
-  `ui_round.cpp`; six pages Now/Battery/Solar/Money/Today/Settings, knob turns pages and wraps,
-  edge ring = battery charge). **Not yet run on a real knob board**: first install is over USB
-  from the install page; check the picture, touch, knob direction (A = clockwise in
-  Waveshare's demo), backlight. The 7" is unchanged apart from refusing firmware for the other
-  screen (project name check in `ota.cpp`).
+- Published: **0.8.1** for both screens. The round knob screen (0.8.0) **works on the owner's
+  board** (installed from the install page; USB plug must be the right way up for the S3).
+- 0.8.1 adds **Tailscale on the knob** (`src/vpn.*`, MicroLink in `components/microlink`,
+  knob build only). Home end: the owner's **Home Assistant** with the Modbus Proxy add-on
+  (Akulatraxas/ha-modbusproxy, upstream = inverter, listens on 502) and the Tailscale add-on.
+  The knob reads the LAN directly; after a failed read, if Tailscale is up it reads
+  `<home device>:<port>` over the tailnet (`microlink_tcp_connect`), and checks the LAN again
+  every 2 min (`main.cpp`). MicroLink can't use other nodes' subnet routes, hence the proxy.
+  **Not yet tried by the owner**: whether HA's Tailscale add-on (userspace networking) passes
+  tailnet port 502 to the proxy add-on is the main unknown; if not, try the add-on's
+  `userspace_networking: false`. Settings: `tsOn`, `tsKey`, `tsHome` (NVS `tson/tskey/tshome`).
 - 0.7.5-0.7.9 (7"): tappable Now icons, filling battery, supplier list, Peak/Off-peak/Shoulder
   editor with time wheels, feed-in at set hours with a daily limit (owner: 10c 16:00-21:00 for
   the first 10 kWh, 0c otherwise), refuse older versions, `TECH_NOTES.md`. Not yet tried on the board.
-- Parked for later (owner's request): remote access with Tailscale on the screen itself, using
-  microlink, a community Tailscale client for ESP32 (https://osrtos.com/projects/microlink-tailscale-vpn-for-esp32/).
-  Not looked at yet: check its licence, ESP-IDF version, RAM/flash needs (TLS + WireGuard on top
-  of LVGL; internal RAM is already tight on the 7") and how it authenticates. Until then the
-  answer is a Tailscale subnet router at home. Nothing built.
 - Offered, not yet agreed: passphrase on the signing key; signing `ota.json` is not needed
   (the version check uses the signed image).
 - Owner's board: on 0.7.x. Updating over Wi-Fi is confirmed working on the real board
@@ -102,6 +102,9 @@ caches `ota.json` for a few minutes). `package.sh` keeps only the two newest `-a
 - USB on the knob: one way round the USB-C plug reaches the second chip (CH340); the S3 shows
   as "USB JTAG/serial debug unit".
 - Shared UI helpers (palette, labels, status line `statusNow()`, `touNow()`) are in `ui_common.cpp`.
+- MicroLink (`components/microlink`, unmodified copy, see its `GRIDCHECK.md`) is excluded from
+  the 7" build (`EXCLUDE_COMPONENTS`); its settings are in `sdkconfig.defaults.knob18` (DERP
+  region 5 = Sydney, its own OTA rollback and config web server off).
 
 ## Code map
 - `src/main.cpp` UI loop (dimming, theme/palette rebuilds), inverter polling task.

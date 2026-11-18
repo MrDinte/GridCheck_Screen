@@ -100,6 +100,26 @@ Being honest about the limits:
   key would be needed, and every screen would need one USB install of a version with the new
   public key.
 
+## Tailscale on the round screen (from 0.8.1)
+
+The round screen can join your Tailscale network to read the inverter through a device at home
+when it's away (see README, "Away from home with Tailscale"). What that means for security:
+
+- **Updates are unchanged.** They still come from this website over HTTPS and must carry
+  GridCheck's signature; Tailscale plays no part in them.
+- **The screen only starts connections** (to the home device's Modbus proxy). Tailscale's
+  policy is enforced on the screen, so nothing on your tailnet can open a connection to it
+  unless your policy allows that. To limit the screen to the proxy alone, give its key a tag
+  and allow that tag only `tcp:502` on the home device (example in the README).
+- **The auth key is stored on the screen** (in its settings memory, like the Wi-Fi password)
+  and is never shown on the phone page. Anyone holding the screen could read it out over USB.
+  Use a key that is pre-approved and not reusable, and if the screen is lost, remove
+  **gridcheck-knob** from the Tailscale admin console: that cuts it off at once.
+- **Reset all settings** also wipes the screen's Tailscale identity.
+- Modbus has no password, so anyone who can reach the proxy can read (and, through the proxy,
+  write) inverter registers. Keep the proxy off the internet; reaching it over Tailscale is
+  limited to your own tailnet and its policy.
+
 ## Checklist for owners
 
 - Set a settings PIN (6 to 8 digits) on the phone page.

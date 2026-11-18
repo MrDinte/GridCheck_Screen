@@ -17,6 +17,8 @@ if(GC_BOARD STREQUAL "knob18")
 else()
   set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults")
   set(GC_PROJECT gridcheck)
+  # Tailscale (components/microlink) is only for the round screen
+  set(EXCLUDE_COMPONENTS microlink)
 endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(${GC_PROJECT})

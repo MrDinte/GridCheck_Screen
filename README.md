@@ -65,6 +65,28 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 
 **Turn the knob** (or swipe) to go through six pages: **Now** (solar, home, grid and battery), **Battery** (a battery that fills up, time to full or empty), **Solar** today against the forecast, **Money** (spent and earned today, the grid price and feed-in right now), **Today**'s energy, and **Settings** (the phone settings address, colours, theme, firmware updates, reset). The ring round the edge shows the battery charge (solar progress on the Solar page). Turning the knob also wakes a dimmed screen. Prices and everything else are set on the phone page.
 
+### Away from home with Tailscale (round screen)
+
+The round screen can come with you: when it can't reach the inverter on the network it's on, it reads it through [Tailscale](https://tailscale.com), and **via Tailscale** shows at the top of the Now page. Back home it reads the inverter directly again. The inverter can't join Tailscale itself, so a device at home passes Modbus on. With **Home Assistant**:
+
+1. **Modbus Proxy add-on.** In Home Assistant: Settings, Add-ons, Add-on store, the ⋮ menu, Repositories: add `https://github.com/Akulatraxas/ha-modbusproxy`. Install **Modbus Proxy**; in its Configuration set the upstream host to your inverter's IP address and the upstream port to 502, leave it listening on port 502, and start it. (The inverter only takes a few Modbus connections, so if readings drop out, point Home Assistant's own Sigenergy integration and the screens at the proxy too.)
+2. **Tailscale add-on.** Install **Tailscale** from the add-on store, start it, open its web UI and log in. Note its name in the [Tailscale admin console](https://login.tailscale.com/admin/machines) (for example `homeassistant`).
+3. **A key for the screen.** In the admin console: Settings, Keys, **Generate auth key**: one-off (not reusable), not ephemeral, pre-approved. Copy it.
+4. **On the screen's phone page,** under **Away from home (Tailscale)**: tick the box, paste the key, type Home Assistant's Tailscale name (or its 100.x address) and Save. The status line says when it's connected.
+5. In the admin console, find **gridcheck-knob**, open its ⋯ menu and **Disable key expiry**, so it doesn't need a new key in a few months.
+6. Try it away from home, for example on your phone's hotspot: after a few seconds of dashes it carries on **via Tailscale**.
+
+Optional, to let the screen reach nothing but the proxy: make the key with a tag (for example `tag:gridcheck`) and allow only that in your tailnet policy:
+
+```json
+"tagOwners": { "tag:gridcheck": ["autogroup:admin"] },
+"grants": [ { "src": ["tag:gridcheck"], "dst": ["homeassistant"], "ip": ["tcp:502"] } ]
+```
+
+(with `homeassistant` as a host defined in the policy's `hosts`, or Home Assistant's 100.x address). The screen only ever starts connections; nothing on the tailnet can reach the screen unless your policy allows it.
+
+Tailscale on the screen uses [MicroLink](https://github.com/CamM2325/microlink), an unofficial Tailscale-compatible client for ESP32 (`components/microlink`). It is only in the round screen's firmware.
+
 ### Light and dark
 
 Choose **Dark**, **Light** or **Auto** (light by day, dark during the night hours) with the **Theme** button on the Settings & info page, or on the phone page.
@@ -93,6 +115,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.8.1**: **Away from home with Tailscale** on the round screen: it reads the inverter through Home Assistant (Modbus Proxy and Tailscale add-ons) when it can't reach it directly, and shows **via Tailscale**. Set it up on the phone page. No change on the 7" screen.
 - **0.8.0**: the round **Waveshare ESP32-S3-Knob-Touch-LCD-1.8 / 1.8B** (360×360) is supported, with six pages you turn through with the knob, its own install button and its own updates. Each screen now refuses firmware made for the other one. Nothing changes on the 7" screen.
 - **0.7**: everything since 0.6:
   - **Power prices on the screen** (Settings & info): pick your grid supplier from a list, switch Peak and Off-peak on or off, set their start and end times and days on hour/minute wheels, and type each price (Peak, Off-peak, Shoulder, feed-in, supply charge) on a number pad. The phone page has a Grid supplier box too. (0.7.6, 0.7.8)

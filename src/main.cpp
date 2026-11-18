@@ -21,6 +21,9 @@
 #include "ui.h"
 #include "ui_common.h"
 #include <ctime>
+#ifdef GC_KNOB18
+#include "vpn.h"
+#endif
 
 static const char* TAG = "gridcheck";
 
@@ -64,7 +67,27 @@ static void inverterTask(void*) {
       vTaskDelay(pdMS_TO_TICKS(1000));
       continue;
     }
-    if (reader.poll(cur)) {
+    bool ok = reader.poll(cur);
+#ifdef GC_KNOB18
+    // Away from home: when the inverter doesn't answer on this network but Tailscale is up,
+    // read through the home device (Home Assistant's Modbus proxy) instead. Every 2 minutes,
+    // check whether the local network works again (back home).
+    static uint32_t lastLanCheck = 0;
+    if (!ok && !reader.viaVpn() && s.tsOn && vpn::ready()) {
+      ESP_LOGI(TAG, "inverter not answering here: reading through Tailscale");
+      reader.useVpn(true);
+      lastLanCheck = millis();
+      ok = reader.poll(cur);
+    } else if (reader.viaVpn() && (!s.tsOn || millis() - lastLanCheck > 120000)) {
+      lastLanCheck = millis();
+      if (!s.tsOn || lanReachable(s.host, s.port)) {
+        ESP_LOGI(TAG, "inverter answers on this network again");
+        reader.useVpn(false);
+      }
+    }
+    cur.remote = reader.viaVpn();
+#endif
+    if (ok) {
       data::addReading(cur);
       if (failures) ESP_LOGI(TAG, "inverter: reading OK");
       failures = 0;
@@ -207,6 +230,9 @@ extern "C" void app_main(void) {
   net::begin();
   data::begin();
   ota::begin();
+#ifdef GC_KNOB18
+  vpn::begin();
+#endif
   board::setBrightness(0);  // net::begin applies the saved brightness; wait for the first frame
   ESP_LOGI(TAG, "free: internal %u KB, PSRAM %u KB", (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
            (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));

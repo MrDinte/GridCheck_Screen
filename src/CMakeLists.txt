@@ -3,7 +3,7 @@ FILE(GLOB_RECURSE app_sources ${CMAKE_SOURCE_DIR}/src/*.c ${CMAKE_SOURCE_DIR}/sr
 if(GC_BOARD STREQUAL "knob18")
   list(REMOVE_ITEM app_sources ${CMAKE_SOURCE_DIR}/src/board.cpp ${CMAKE_SOURCE_DIR}/src/ui.cpp ${CMAKE_SOURCE_DIR}/src/ui_pages.cpp)
 else()
-  list(REMOVE_ITEM app_sources ${CMAKE_SOURCE_DIR}/src/board_knob.cpp ${CMAKE_SOURCE_DIR}/src/ui_round.cpp)
+  list(REMOVE_ITEM app_sources ${CMAKE_SOURCE_DIR}/src/board_knob.cpp ${CMAKE_SOURCE_DIR}/src/ui_round.cpp ${CMAKE_SOURCE_DIR}/src/vpn.cpp)
 endif()
 idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "." "../include")
 target_compile_definitions(${COMPONENT_LIB} PRIVATE LV_CONF_INCLUDE_SIMPLE)

@@ -17,6 +17,9 @@
 #include "freertos/task.h"
 #include "lwip/sockets.h"
 #include "mbedtls/sha256.h"
+#ifdef GC_KNOB18
+#include "vpn.h"
+#endif
 #include "model.h"
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -143,6 +146,10 @@ static void load() {
   S.pinHash = getStr(h, "phash", "");
   S.updateUrl = getStr(h, "updurl", "");
   S.supplier = getStr(h, "supplier", "");
+  uint8_t tsOn = 0;
+  if (nvs_get_u8(h, "tson", &tsOn) == ESP_OK) S.tsOn = tsOn;
+  S.tsKey = getStr(h, "tskey", "");
+  S.tsHome = getStr(h, "tshome", "");
   nvs_close(h);
 }
 
@@ -171,6 +178,9 @@ static void save() {
   nvs_set_str(h, "phash", S.pinHash.c_str());
   nvs_set_str(h, "updurl", S.updateUrl.c_str());
   nvs_set_str(h, "supplier", S.supplier.c_str());
+  nvs_set_u8(h, "tson", S.tsOn ? 1 : 0);
+  nvs_set_str(h, "tskey", S.tsKey.c_str());
+  nvs_set_str(h, "tshome", S.tsHome.c_str());
   nvs_commit(h);
   nvs_close(h);
   version++;
@@ -209,6 +219,9 @@ void factoryReset() {
     nvs_commit(h);
     nvs_close(h);
   }
+#ifdef GC_KNOB18
+  vpn::forget();  // and leave the tailnet for good
+#endif
   ESP_LOGW(TAG, "settings cleared, restarting");
   vTaskDelay(pdMS_TO_TICKS(300));
   esp_restart();
@@ -437,6 +450,20 @@ static std::string page(const std::string& message, bool good) {
          (s.kwp > 0 ? num(s.kwp) : std::string("")) +
          "'><p class=help>Needs internet: the screen asks Open-Meteo (free, no account) for the day's sunshine once an hour. Leave blank to compare with your 7-day average. Your inverter data never leaves your network.</p></div>";
   }
+#ifdef GC_KNOB18
+  // Away from home: Tailscale through a home device (Home Assistant) that passes Modbus on.
+  h += std::string("<div class=card><h2>Away from home (Tailscale)</h2>"
+       "<div class=chk><input type=checkbox id=tson name=tson value=1") + (s.tsOn ? " checked" : "") +
+       "><label for=tson style='margin:0'>Read the inverter through Tailscale when away from home</label></div>"
+       "<label for=tskey>Tailscale auth key</label><input id=tskey name=tskey type=password autocomplete=off placeholder='" +
+       (s.tsKey.empty() ? "tskey-auth-..." : "Saved - leave blank to keep") +
+       "'><label for=tshome>Home device on Tailscale</label><input id=tshome name=tshome maxlength=63 placeholder='e.g. homeassistant or 100.101.102.103' value='" +
+       esc(s.tsHome) + "'><div class=kv><span>Status</span><b>" + esc(vpn::status()) +
+       "</b></div><p class=help>The home device passes Modbus on to the inverter: on Home Assistant, the <b>Modbus Proxy</b> and "
+       "<b>Tailscale</b> add-ons. At home the screen reads the inverter directly as usual; when it can't, it reads through "
+       "Tailscale. Make a key in the Tailscale admin console (Settings, Keys: not ephemeral, pre-approved), and once the screen "
+       "shows up as <b>gridcheck-knob</b>, turn off <b>key expiry</b> for it. The key is kept on the screen and never shown here.</p></div>";
+#endif
   h += "<div class=card><h2>Firmware</h2><div class=kv><span>On this screen</span><b>" EH_VERSION "</b></div>"
        "<div class=kv><span>Newest online</span><b id=olatest>-</b></div><p class=help id=omsg></p><progress id=oprog max=100 hidden></progress>"
        "<button type=button class=sec id=ocheck>Check for updates</button><button type=button id=oinstall hidden>Install update</button>"
@@ -645,6 +672,14 @@ static esp_err_t handleSave(httpd_req_t* req) {
     S.brightness = (uint8_t)constrain(bright, 5L, 100L);
     S.tariff = tariff;
     S.supplier = trim(formField(body, "supplier")).substr(0, SUPPLIER_MAX);
+#ifdef GC_KNOB18
+    S.tsOn = hasField(body, "tson");
+    {
+      const std::string key = trim(formField(body, "tskey"));
+      if (!key.empty()) S.tsKey = key.substr(0, 120);  // blank keeps the saved key
+    }
+    S.tsHome = trim(formField(body, "tshome")).substr(0, 63);
+#endif
     S.palette = (uint8_t)constrain(palette, 0L, 2L);
     if (hasField(body, "theme")) S.theme = (uint8_t)constrain(strtol(formField(body, "theme").c_str(), nullptr, 10), 0L, 2L);
     S.dimAfterMin = (uint8_t)constrain(dimAfter, 0L, 60L);

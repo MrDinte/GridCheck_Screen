@@ -34,3 +34,21 @@ CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=n
 
 # ---- HTTPS (update check, forecast) ----
 CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+
+# ---- Tailscale (MicroLink, components/microlink) ----
+# Its Noise handshake needs ChaCha20-Poly1305 and HKDF from mbedTLS.
+CONFIG_MBEDTLS_CHACHA20_C=y
+CONFIG_MBEDTLS_POLY1305_C=y
+CONFIG_MBEDTLS_CHACHAPOLY_C=y
+CONFIG_MBEDTLS_HKDF_C=y
+CONFIG_LWIP_SO_RCVBUF=y
+CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=64
+CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=4096
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=30
+# Relay through Sydney when no direct path can be made (Tailscale DERP region 5).
+CONFIG_ML_DERP_REGION=5
+CONFIG_ML_MAX_PEERS=8
+# GridCheck confirms its own updates (ota.cpp); MicroLink must not roll them back.
+CONFIG_ML_OTA_ROLLBACK=n
+CONFIG_ML_ENABLE_CONFIG_HTTPD=n
+CONFIG_ML_LOG_LEVEL_WARN=y

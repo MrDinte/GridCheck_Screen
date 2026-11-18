@@ -22,6 +22,7 @@ struct Live {
   float reserve = NAN;       // discharge cut-off %
   float soh = NAN;           // state of health %
   float tempC = NAN;         // average cell temperature
+  bool remote = false;       // read through Tailscale (round screen away from home)
   char error[120] = "";
 };
 

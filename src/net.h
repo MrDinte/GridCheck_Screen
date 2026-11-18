@@ -83,6 +83,10 @@ struct Settings {
   bool nightDim = true;         // also dim overnight
   uint16_t nightStart = 20 * 60, nightEnd = 7 * 60;  // minutes after midnight
   std::string updateUrl;        // where to look for firmware updates ("" = GridCheck's own site)
+  // Tailscale (round screen only): read the inverter through a home device when away
+  bool tsOn = false;
+  std::string tsKey;            // auth key (never shown back on the phone page)
+  std::string tsHome;           // the home device's Tailscale name or 100.x address
 };
 
 /** Electricity retailers offered on screen and on the phone page (any name can be typed on the phone). */

@@ -21,7 +21,7 @@ enum { P_NOW, P_BATT, P_SOLAR, P_MONEY, P_TODAY, P_SET, PAGES };
 static lv_obj_t *tiles, *ring, *statusDot, *statusLbl, *dots[PAGES];
 static int page = 0;
 // Now
-static lv_obj_t *nSolar, *nHouse, *nGrid, *nGridSub, *nBattLbl, *nBatt, *nBattSub, *nSetup, *nBody;
+static lv_obj_t *nSolar, *nHouse, *nGrid, *nGridSub, *nBattLbl, *nBatt, *nBattSub, *nSetup, *nBody, *nAway;
 // Battery
 static lv_obj_t *bBody, *bCap, *bFill, *bPct, *bState, *bEta;
 // Solar
@@ -112,6 +112,9 @@ static void time12(char* b, size_t n, int m) {
 static void roundNow(lv_obj_t* t) {
   nBody = plain(t);
   lv_obj_set_size(nBody, S, S);
+  // away from home, reading through Tailscale
+  nAway = centred(nBody, &lv_font_montserrat_14, C_MUTED, 24, LV_SYMBOL_WIFI " via Tailscale");
+  lv_obj_add_flag(nAway, LV_OBJ_FLAG_HIDDEN);
   centred(nBody, &lv_font_montserrat_16, C_MUTED, 46, "Solar");
   nSolar = bigValue(nBody, &lv_font_montserrat_40, C_SOLAR, "kW", 64);
   centred(nBody, &lv_font_montserrat_16, C_MUTED, 116, "Home");
@@ -398,6 +401,8 @@ void update() {
     lv_obj_add_flag(nSetup, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(nBody, LV_OBJ_FLAG_HIDDEN);
   }
+  if (fresh && l.remote) lv_obj_clear_flag(nAway, LV_OBJ_FLAG_HIDDEN);
+  else lv_obj_add_flag(nAway, LV_OBJ_FLAG_HIDDEN);
   if (fresh) {
     fmtKw(b, sizeof b, l.solar);
     lv_label_set_text(nSolar, b);
@@ -504,7 +509,8 @@ void update() {
   // ---- Settings
   const std::string addr = net::address();
   lv_label_set_text(xAddr, addr.length() ? addr.c_str() : dash);
-  lv_label_set_text_fmt(xWifi, "Wi-Fi: %s", net::connected() ? net::ssidInUse().c_str() : net::apMode() ? "not connected" : "connecting...");
+  lv_label_set_text_fmt(xWifi, "Wi-Fi: %s%s", net::connected() ? net::ssidInUse().c_str() : net::apMode() ? "not connected" : "connecting...",
+                        fresh && l.remote ? "  -  via Tailscale" : "");
   lv_label_set_text_fmt(xPal, "Colours: %s", PALETTE_NAMES[s.palette % 3]);
   lv_label_set_text_fmt(xTheme, "Theme: %s", THEME_NAMES[s.theme % 3]);
   const ota::Status os = ota::status();

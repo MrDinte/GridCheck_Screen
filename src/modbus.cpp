@@ -5,6 +5,9 @@
 
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
+#ifdef GC_KNOB18
+#include "vpn.h"
+#endif
 
 static constexpr int TIMEOUT_MS = 3000;
 
@@ -17,10 +20,26 @@ void ModbusTcp::setTarget(const std::string& host, uint16_t port) {
 void ModbusTcp::close() {
   if (_sock >= 0) ::close(_sock);
   _sock = -1;
+#ifdef GC_KNOB18
+  if (_vsock) vpn::tcpClose(_vsock);
+  _vsock = nullptr;
+#endif
+}
+
+void ModbusTcp::setVpn(bool on) {
+  if (on == _vpn) return;
+  close();
+  _vpn = on;
 }
 
 bool ModbusTcp::connectNow(std::string& err) {
   close();
+#ifdef GC_KNOB18
+  if (_vpn) {  // through the home device on the tailnet (it passes Modbus on to the inverter)
+    _vsock = vpn::tcpConnect(_port, 2 * TIMEOUT_MS, err);
+    return _vsock != nullptr;
+  }
+#endif
   struct addrinfo hints = {};
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
@@ -67,10 +86,20 @@ bool ModbusTcp::connectNow(std::string& err) {
   return true;
 }
 
+bool ModbusTcp::probe(std::string& err) {
+  const bool ok = connectNow(err);
+  close();
+  return ok;
+}
+
 bool ModbusTcp::readExactly(uint8_t* buf, size_t n) {
   size_t got = 0;
   while (got < n) {
+#ifdef GC_KNOB18
+    const int r = _vsock ? vpn::tcpRecv(_vsock, buf + got, n - got, 2 * TIMEOUT_MS) : recv(_sock, buf + got, n - got, 0);
+#else
     const int r = recv(_sock, buf + got, n - got, 0);
+#endif
     if (r <= 0) return false;  // closed, error or timeout
     got += r;
   }
@@ -78,12 +107,17 @@ bool ModbusTcp::readExactly(uint8_t* buf, size_t n) {
 }
 
 MbResult ModbusTcp::readInput(uint8_t unit, uint16_t addr, uint16_t count, uint16_t* out, std::string& err) {
-  if (_sock < 0 && !connectNow(err)) return MbResult::NoConnect;
+  if (!connected() && !connectNow(err)) return MbResult::NoConnect;
   _tid++;
   const uint8_t req[12] = {(uint8_t)(_tid >> 8), (uint8_t)_tid, 0, 0, 0, 6, unit, 0x04,
                            (uint8_t)(addr >> 8), (uint8_t)addr, (uint8_t)(count >> 8), (uint8_t)count};
   uint8_t head[9];
-  if (send(_sock, req, sizeof req, 0) != (int)sizeof req || !readExactly(head, 9)) {
+#ifdef GC_KNOB18
+  const bool sent = _vsock ? vpn::tcpSend(_vsock, req, sizeof req) : send(_sock, req, sizeof req, 0) == (int)sizeof req;
+#else
+  const bool sent = send(_sock, req, sizeof req, 0) == (int)sizeof req;
+#endif
+  if (!sent || !readExactly(head, 9)) {
     close();
     err = "the inverter hung up while reading " + std::to_string(addr) + " from unit " + std::to_string(unit);
     return MbResult::Dropped;
@@ -230,4 +264,11 @@ void demoFill(Live& out) {
   out.demo = true;
   out.error[0] = 0;
   out.updatedMs = millis();
+}
+
+bool lanReachable(const std::string& host, uint16_t port) {
+  ModbusTcp t;
+  t.setTarget(host, port);
+  std::string err;
+  return t.probe(err);
 }
