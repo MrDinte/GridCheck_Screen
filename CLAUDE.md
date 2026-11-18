@@ -16,9 +16,10 @@ appending, then commit and push. Only keep project facts here (this repo is publ
 addresses, emails or keys.
 
 ## Current state (updated 2026-11-18)
-- Published: **0.8.2** for both screens. 0.8.2: knob Settings page "Change Wi-Fi" opens the
+- Published: **0.8.3** for both screens. 0.8.2: knob Settings page "Change Wi-Fi" opens the
   setup hotspot now (`net::openSetupHotspot()`, closes on Close / after 10 min / on save) with a
-  QR code (`LV_USE_QRCODE` on; QR is black on white on purpose). Not yet tried on the board.
+  QR code (`LV_USE_QRCODE` on; QR is black on white on purpose). On the board the QR vanished
+  after ~1 s (it was only marked open after the network scan); 0.8.3 marks it open at once.
 - 0.8.0/0.8.1: The round knob screen (0.8.0) **works on the owner's
   board** (installed from the install page; USB plug must be the right way up for the S3).
 - 0.8.1 adds **Tailscale on the knob** (`src/vpn.*`, MicroLink in `components/microlink`,

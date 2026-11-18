@@ -58,9 +58,15 @@ Settings settings() {
 }
 uint32_t settingsVersion() { return version; }
 bool apMode() { return ap; }
-void openSetupHotspot() { openRequested = true; }
+// Marked open straight away, so the screen keeps showing the QR code while the
+// hotspot starts (listing the nearby networks first takes a few seconds).
+void openSetupHotspot() {
+  apOpenedMs = millis();
+  apByHand = true;
+  openRequested = true;
+}
 void closeSetupHotspot() { closeRequested = true; }
-bool setupHotspotByHand() { return apByHand || openRequested; }
+bool setupHotspotByHand() { return apByHand; }
 bool connected() { return haveIp; }
 std::string ssidInUse() {
   wifi_ap_record_t info;
@@ -994,8 +1000,6 @@ static void watchTask(void*) {
         scan();
         startAP(false);
       }
-      apByHand = true;
-      apOpenedMs = millis();
     }
     if (closeRequested || (apByHand && millis() - apOpenedMs > AP_BY_HAND_MS)) {
       closeRequested = false;

@@ -1,15 +1,15 @@
 {
   "name": "GridCheck for Waveshare ESP32-S3-Knob-Touch-LCD-1.8",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "gridcheck-knob18-0.8.2-bootloader.bin", "offset": 0 },
-        { "path": "gridcheck-knob18-0.8.2-partitions.bin", "offset": 32768 },
-        { "path": "gridcheck-knob18-0.8.2-otadata.bin", "offset": 61440 },
-        { "path": "gridcheck-knob18-0.8.2-app.bin", "offset": 131072 }
+        { "path": "gridcheck-knob18-0.8.3-bootloader.bin", "offset": 0 },
+        { "path": "gridcheck-knob18-0.8.3-partitions.bin", "offset": 32768 },
+        { "path": "gridcheck-knob18-0.8.3-otadata.bin", "offset": 61440 },
+        { "path": "gridcheck-knob18-0.8.3-app.bin", "offset": 131072 }
       ]
     }
   ]
