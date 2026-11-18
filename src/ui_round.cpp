@@ -2,6 +2,7 @@
 // Seven pages, in step with the web dashboard's round layout (round.html): Now, Battery,
 // Solar, Money, Today and Settings, plus This screen (its own battery, brightness, Wi-Fi). Turn the knob (or swipe) to change page; the edge
 // ring shows the battery charge (solar progress on the Solar page).
+#include <cstdarg>
 #include <ctime>
 #include <strings.h>
 
@@ -18,7 +19,7 @@ namespace ui {
 
 static constexpr int S = board::SCREEN_W;  // 360
 static constexpr int C = S / 2;            // centre
-enum { P_NOW, P_BATT, P_SOLAR, P_MONEY, P_TODAY, P_SET, P_SCREEN, PAGES };
+enum { P_NOW, P_BATT, P_SOLAR, P_MONEY, P_TODAY, P_SET, P_SCREEN, P_CONN, PAGES };
 
 static lv_obj_t *tiles, *ring, *statusDot, *statusLbl, *dots[PAGES];
 static int page = 0;
@@ -38,6 +39,9 @@ static lv_obj_t *xAddr, *xWifi, *xPal, *xTheme, *xFw, *xReset;
 static lv_obj_t* wifiBox;
 // This screen
 static lv_obj_t *dBatt, *dBattSub, *dBright, *dDim, *dWifi, *dTs, *dUp;
+// Connection: each link from Wi-Fi to the inverter, with a coloured dot
+enum { C_ROW_WIFI, C_ROW_ADDR, C_ROW_NET, C_ROW_TS, C_ROW_HOME, C_ROW_INV, C_ROWS };
+static lv_obj_t *cDot[C_ROWS], *cVal[C_ROWS], *cProblem;
 static uint32_t installAskedAt = 0;
 
 static constexpr int BATT_W = 112, BATT_H = 54, BATT_PAD = 5, BATT_BORDER = 5;
@@ -345,6 +349,86 @@ static void updateScreenPage(const Settings& s) {
   else lv_label_set_text_fmt(dUp, "On for %lu days", (unsigned long)(up / 1440));
 }
 
+// ---- Connection: Wi-Fi -> internet -> Tailscale -> home device -> inverter ------------
+static void roundConnection(lv_obj_t* t) {
+  centred(t, &lv_font_montserrat_16, C_MUTED, 30, "Connection");
+  static const char* NAMES[C_ROWS] = {"Wi-Fi", "Address", "Internet", "Tailscale", "Home device", "Inverter"};
+  for (int i = 0; i < C_ROWS; i++) {
+    lv_obj_t* r = plain(t);
+    lv_obj_set_size(r, 272, 28);
+    lv_obj_align(r, LV_ALIGN_TOP_MID, 0, 56 + i * 30);
+    cDot[i] = plain(r);
+    lv_obj_set_size(cDot[i], 8, 8);
+    lv_obj_set_style_radius(cDot[i], 4, 0);
+    lv_obj_set_style_bg_opa(cDot[i], LV_OPA_COVER, 0);
+    lv_obj_align(cDot[i], LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_t* k = label(r, &lv_font_montserrat_14, C_MUTED, NAMES[i]);
+    lv_obj_align(k, LV_ALIGN_LEFT_MID, 14, 0);
+    cVal[i] = label(r, &lv_font_montserrat_14, C_INK, "-");
+    lv_obj_set_width(cVal[i], 170);
+    lv_obj_set_style_text_align(cVal[i], LV_TEXT_ALIGN_RIGHT, 0);
+    lv_label_set_long_mode(cVal[i], LV_LABEL_LONG_DOT);
+    lv_obj_align(cVal[i], LV_ALIGN_RIGHT_MID, 0, 0);
+  }
+  cProblem = centred(t, &lv_font_montserrat_14, C_WARN, 240);
+  lv_obj_set_width(cProblem, 250);
+  lv_obj_align(cProblem, LV_ALIGN_TOP_MID, 0, 240);
+  lv_label_set_long_mode(cProblem, LV_LABEL_LONG_DOT);
+  lv_obj_set_height(cProblem, 54);  // two lines at most
+}
+
+/** One row: green = working, amber = a problem to fix, grey = not used / waiting. */
+static void connRow(int i, int level, const char* fmt, ...) {
+  char b[80];
+  va_list ap;
+  va_start(ap, fmt);
+  vsnprintf(b, sizeof b, fmt, ap);
+  va_end(ap);
+  lv_label_set_text(cVal[i], b);
+  lv_obj_set_style_bg_color(cDot[i], level > 0 ? C_GOOD : level < 0 ? C_WARN : C_FAINT, 0);
+}
+
+static void updateConnection(const Live& l, const Settings& s, bool fresh) {
+  const bool online = net::connected();
+  // Wi-Fi
+  const std::string why = net::wifiProblem(true);
+  const int rssi = net::wifiRssi();
+  if (online) connRow(C_ROW_WIFI, rssi > -75 ? 1 : -1, "%s, %s", net::ssidInUse().c_str(), rssi > -60 ? "good" : rssi > -72 ? "fair" : "weak");
+  else if (!why.empty()) connRow(C_ROW_WIFI, -1, "%s", why.c_str());
+  else if (net::apMode()) connRow(C_ROW_WIFI, -1, "%s", "not connected");
+  else connRow(C_ROW_WIFI, 0, "%s", "joining...");
+  // address (where the phone settings page is)
+  const std::string addr = net::address();
+  std::string host = addr.substr(addr.find("//") == std::string::npos ? 0 : addr.find("//") + 2);
+  if (!host.empty() && host.back() == '/') host.pop_back();
+  if (online) connRow(C_ROW_ADDR, 1, "%s", host.c_str());
+  else connRow(C_ROW_ADDR, 0, "%s", "-");
+  // internet: the clock is set from the internet, so a set clock means it got out
+  const bool clockSet = time(nullptr) > 1700000000;
+  if (!online) connRow(C_ROW_NET, 0, "%s", "-");
+  else if (clockSet) connRow(C_ROW_NET, 1, "%s", "OK");
+  else connRow(C_ROW_NET, -1, "%s", "no reply yet (login page?)");
+  // Tailscale and the home device
+  const vpn::Diag d = vpn::diag();
+  if (!d.on) connRow(C_ROW_TS, 0, "%s", "off");
+  else if (d.connected) connRow(C_ROW_TS, 1, "%s", d.ip.c_str());
+  else connRow(C_ROW_TS, d.state == "connecting..." ? 0 : -1, "%s", d.state.c_str());
+  if (!d.on) connRow(C_ROW_HOME, 0, "%s", "-");
+  else if (d.home.empty()) connRow(C_ROW_HOME, -1, "%s", "not set");
+  else if (d.homeFound) connRow(C_ROW_HOME, 1, "%s, %s", d.homeIp.c_str(), d.homeDirect ? "direct" : "relayed");
+  else if (d.connected) connRow(C_ROW_HOME, -1, "\"%s\" not found", d.home.c_str());
+  else connRow(C_ROW_HOME, 0, "%s", "-");
+  // inverter
+  if (s.demo) connRow(C_ROW_INV, 1, "%s", "demo data");
+  else if (s.host.empty()) connRow(C_ROW_INV, -1, "%s", "not set up");
+  else if (!online) connRow(C_ROW_INV, 0, "%s", "-");
+  else if (fresh) connRow(C_ROW_INV, 1, "OK %s, %lu s ago", l.remote ? "via Tailscale" : "direct", (unsigned long)((millis() - l.updatedMs) / 1000));
+  else connRow(C_ROW_INV, -1, "%s", l.updatedMs ? "no reading" : "connecting...");
+  // the last error from reading the inverter, in its own words
+  if (!fresh && l.error[0] && online) lv_label_set_text(cProblem, l.error);
+  else lv_label_set_text(cProblem, "");
+}
+
 // "Change Wi-Fi": shown while the setup hotspot is open from the Settings page.
 static void buildWifiBox(lv_obj_t* scr) {
   wifiBox = plain(scr);
@@ -418,6 +502,7 @@ void create() {
   roundToday(t[P_TODAY]);
   roundSettings(t[P_SET]);
   roundScreen(t[P_SCREEN]);
+  roundConnection(t[P_CONN]);
 
   // status line and page dots along the bottom
   lv_obj_t* st = plain(scr);
@@ -495,7 +580,7 @@ void update() {
   lv_label_set_text(statusLbl, stat.text);
   lv_obj_set_style_text_color(statusLbl, stat.color, 0);
   lv_obj_set_style_bg_color(statusDot, stat.color, 0);
-  if (page == P_SET || page == P_SCREEN) lv_obj_add_flag(lv_obj_get_parent(statusLbl), LV_OBJ_FLAG_HIDDEN);
+  if (page == P_SET || page == P_SCREEN || page == P_CONN) lv_obj_add_flag(lv_obj_get_parent(statusLbl), LV_OBJ_FLAG_HIDDEN);
   else lv_obj_clear_flag(lv_obj_get_parent(statusLbl), LV_OBJ_FLAG_HIDDEN);
 
   // edge ring
@@ -634,6 +719,7 @@ void update() {
   }
 
   updateScreenPage(s);
+  updateConnection(l, s, fresh);
 
   // ---- Settings
   const std::string addr = net::address();

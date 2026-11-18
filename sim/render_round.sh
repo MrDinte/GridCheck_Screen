@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")"
 mkdir -p out
-for pg in now battery solar money today settings screen; do ./build/render_round day $pg out/round-$pg.raw; done
+for pg in now battery solar money today settings screen connection; do ./build/render_round day $pg out/round-$pg.raw; done
 ./build/render_round night now out/round-night.raw
 ./build/render_round night battery out/round-night-battery.raw
 SIM_LIGHT=1 ./build/render_round day now out/round-light.raw
@@ -32,7 +32,7 @@ PY
 # README picture: the seven pages, two rows
 python3 - <<'PY'
 from PIL import Image
-names = ['now', 'battery', 'solar', 'money', 'today', 'settings', 'screen']
+names = ['now', 'battery', 'solar', 'money', 'today', 'settings', 'screen', 'connection']
 sheet = Image.new('RGB', (1600, 800), (20, 20, 24))
 for i, n in enumerate(names):
     sheet.paste(Image.open('out/round-%s.png' % n), (400 * (i % 4), 400 * (i // 4)))

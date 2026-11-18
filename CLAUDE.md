@@ -16,7 +16,10 @@ appending, then commit and push. Only keep project facts here (this repo is publ
 addresses, emails or keys.
 
 ## Current state (updated 2026-11-18)
-- Published: **0.8.5** for both screens. 0.8.5: `net::wifiProblem()` (disconnect reason ->
+- Published: **0.8.6** for both screens. 0.8.6: knob page 8 "Connection" (Wi-Fi, address,
+  internet = clock set, Tailscale `vpn::diag()`, home device direct/relayed, inverter direct/
+  via Tailscale, last inverter error). Owner wanted diagnosis on the knob screen.
+- 0.8.5: `net::wifiProblem()` (disconnect reason ->
   "Can't find X" / "Wrong Wi-Fi password"; shown in the status line of both screens), SSID
   matched ignoring curly vs straight quotes (`plainQuotes()`; rescans after 15 s of "not
   found"), `vpn::brief()` on the knob's status line / This screen page. Not tried on the board.
@@ -134,7 +137,7 @@ caches `ota.json` for a few minutes). `package.sh` keeps only the two newest `-a
   `applyPalette()` (3 palettes × dark/light), so new UI must use the `C_*` colours.
 - `sim/` compiles the real UI code on Linux; `sim/sim_main.cpp` stubs net/data/ota
   (env vars: `SIM_LIGHT`, `SIM_PALETTE`, `SIM_OTA`, `SIM_OTA_PCT`, `SIM_TOU`, `SIM_TIME`, `SIM_AP`,
-  `SIM_SUPPLIER`, `SIM_FIT`, `SIM_REMOTE`, `SIM_HOTSPOT`, `SIM_BATT`, `SIM_WIFIERR`, `SIM_TS`; pages `prices`, `prices-end`,
+  `SIM_SUPPLIER`, `SIM_FIT`, `SIM_REMOTE`, `SIM_HOTSPOT`, `SIM_BATT`, `SIM_WIFIERR`, `SIM_TS`, `SIM_RELAY`; pages `prices`, `prices-end`,
   `prices-list` open the price editor).
 
 ## Related repo

@@ -61,9 +61,9 @@ Swipe between eight pages, tap a page dot to jump to one, or use the **Home** an
 
 ### The round knob screen (1.8")
 
-![The round screen's seven pages](docs/images/screen-knob18.png)
+![The round screen's pages](docs/images/screen-knob18.png)
 
-**Turn the knob** (or swipe) to go through seven pages: **Now** (solar, home, grid and battery), **Battery** (a battery that fills up, time to full or empty), **Solar** today against the forecast, **Money** (spent and earned today, the grid price and feed-in right now), **Today**'s energy, and **Settings** (the phone settings address, **Change Wi-Fi**, colours, theme, firmware updates, reset). **Change Wi-Fi** opens the screen's setup hotspot straight away and shows a QR code: scan it with your phone to join, pick the new Wi-Fi on the page that opens and Save. Handy when you take the screen somewhere else. The last page, **This screen**, shows its own battery (charge and voltage), brightness with − and + buttons, how soon it dims, the Wi-Fi signal and how long it has been on. The ring round the edge shows the battery charge (solar progress on the Solar page). Turning the knob also wakes a dimmed screen. Prices and everything else are set on the phone page.
+**Turn the knob** (or swipe) to go through eight pages: **Now** (solar, home, grid and battery), **Battery** (a battery that fills up, time to full or empty), **Solar** today against the forecast, **Money** (spent and earned today, the grid price and feed-in right now), **Today**'s energy, and **Settings** (the phone settings address, **Change Wi-Fi**, colours, theme, firmware updates, reset). **Change Wi-Fi** opens the screen's setup hotspot straight away and shows a QR code: scan it with your phone to join, pick the new Wi-Fi on the page that opens and Save. Handy when you take the screen somewhere else. The last page, **This screen**, shows its own battery (charge and voltage), brightness with − and + buttons, how soon it dims, the Wi-Fi signal and how long it has been on. **Connection** checks each link in turn, with a coloured dot for each: Wi-Fi, its address for the phone page, internet, Tailscale, the home device (direct or relayed) and the inverter (direct or via Tailscale), plus the last problem reading the inverter, in its own words. The ring round the edge shows the battery charge (solar progress on the Solar page). Turning the knob also wakes a dimmed screen. Prices and everything else are set on the phone page.
 
 ### Away from home with Tailscale (round screen)
 
@@ -116,6 +116,7 @@ History (one sample a minute for 24 hours, and one record a day for 13 months) i
 
 ## Version history
 
+- **0.8.6**: a **Connection** page on the round screen, to see at a glance where a connection breaks (Wi-Fi, internet, Tailscale, home device, inverter).
 - **0.8.5**: the screens say why Wi-Fi isn't working ("Can't find TimiPhone", "Wrong Wi-Fi password") and join a network whose name only differs in its apostrophes (an iPhone's "Tim’s iPhone"). The round screen shows what Tailscale is doing when it can't read the inverter ("Tailscale: key rejected", "Home not answering").
 - **0.8.4**: a **This screen** page on the round screen: its own battery, brightness (− / +), dimming, Wi-Fi signal. Saving a setting no longer blanks the readings for a moment (both screens).
 - **0.8.2-0.8.3**: **Change Wi-Fi** on the round screen's Settings page opens its setup hotspot at once, with a QR code for your phone that stays up until you press Close, save new Wi-Fi, or 10 minutes pass. No change on the 7" screen.

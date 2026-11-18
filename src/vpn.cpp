@@ -65,6 +65,36 @@ std::string brief() {
   return homeIp() ? "Tailscale: connected" : "Tailscale: home not found";
 }
 
+Diag diag() {
+  std::lock_guard<std::mutex> g(lock);
+  const Settings s = net::settings();
+  Diag d;
+  d.on = s.tsOn;
+  d.home = s.tsHome;
+  if (!s.tsOn) d.state = "off";
+  else if (s.tsKey.empty()) d.state = "no key saved";
+  else if (authFailed) d.state = "key rejected";
+  else if (!ml || microlink_get_state(ml) != ML_STATE_CONNECTED) d.state = "connecting...";
+  else d.state = "connected";
+  d.connected = d.state == "connected";
+  if (!d.connected) return d;
+  char ip[20];
+  microlink_ip_to_str(microlink_get_vpn_ip(ml), ip);
+  d.ip = ip;
+  const uint32_t h = homeIp();
+  if (h) {
+    d.homeFound = true;
+    microlink_ip_to_str(h, ip);
+    d.homeIp = ip;
+    const int n = microlink_get_peer_count(ml);
+    for (int i = 0; i < n; i++) {
+      microlink_peer_info_t p;
+      if (microlink_get_peer_info(ml, i, &p) == ESP_OK && p.vpn_ip == h) d.homeDirect = p.direct_path;
+    }
+  }
+  return d;
+}
+
 static void onState(microlink_t*, microlink_state_t st, void*) {
   if (st == ML_STATE_AUTH_FAILED) authFailed = true;
   if (st == ML_STATE_CONNECTED) authFailed = false;

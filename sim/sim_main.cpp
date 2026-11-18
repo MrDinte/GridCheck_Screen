@@ -7,6 +7,7 @@
 #include "ui.h"
 #include "ui_common.h"
 #include "screen_size.h"
+#include "vpn.h"
 #include "data.h"
 #include <vector>
 
@@ -72,6 +73,17 @@ uint32_t version() { return 1; }
 namespace vpn {
 // SIM_TS="Tailscale: key rejected" etc. (round screen)
 std::string brief() { return std::getenv("SIM_TS") ? std::getenv("SIM_TS") : ""; }
+Diag diag() {
+  Diag d;
+  if (!std::getenv("SIM_TS")) { d.state = "off"; return d; }
+  d.on = true;
+  d.home = "homeassistant";
+  if (std::string(std::getenv("SIM_TS")).find("connected") != std::string::npos) {
+    d.connected = true; d.state = "connected"; d.ip = "100.101.102.7";
+    d.homeFound = true; d.homeIp = "100.88.1.20"; d.homeDirect = !std::getenv("SIM_RELAY");
+  } else d.state = "key rejected";
+  return d;
+}
 }
 namespace board {
 // SIM_BATT=<volts> for the round screen's own battery (default 3.95 V)
@@ -177,7 +189,7 @@ int main(int argc, char** argv) {
   for (int i = 0; i < 60; i++) { fakeMs += 33; lv_tick_inc(33); lv_timer_handler(); }
   if (argc > 2) {
 #ifdef GC_KNOB18
-    const char* pages[] = {"now", "battery", "solar", "money", "today", "settings", "screen"};
+    const char* pages[] = {"now", "battery", "solar", "money", "today", "settings", "screen", "connection"};
 #else
     const char* pages[] = {"now", "today", "solar", "money", "flow", "battery", "history", "info"};
 #endif
